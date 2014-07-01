@@ -1,0 +1,12 @@
+{
+  "outputGraphPath":"/Users/wfreeman/rdf2neo-test/",
+  "gzippedTurtleFile":"/Users/wfreeman/Downloads/freebase-rdf-2013-08-18-00-00.gz",
+  "nodeTypeSubjects": ["ns:chemistry.chemical_compound"],
+  "nodeTypePredicates": ["ns:type.type.instance"],
+  "ignoreSubjects":[],
+  "ignorePredicates":[],
+  "ignoreObjects":[],
+  "ignorePredicatePrefixes":[],
+  "ignoreSubjectPrefixes":[],
+  "ignoreObjectPrefixes":[] 
+}
