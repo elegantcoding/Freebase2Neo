@@ -7,25 +7,14 @@ package freebase2neo
 ////-XX:CMSInitiatingOccupancyFraction=<percent>
 //http://docs.neo4j.org/chunked/stable/configuration-io-examples.html#configuration-batchinsert
 
-
-import collection.JavaConverters._
-
 import java.io.{BufferedReader, InputStreamReader, FileInputStream}
-
 import java.util.zip.GZIPInputStream
-
-import gnu.trove.map.hash.TObjectLongHashMap
-
 import org.neo4j.graphdb.{DynamicRelationshipType, DynamicLabel}
 import org.neo4j.unsafe.batchinsert.BatchInserters
 
-import rdfProcessor.rdfProcessor.{RdfLineProcessor, CleanerFunction}
-
-import rdfProcessor.{RdfProcessor, RdfFileProcessor, RfdCleaner}
-
-import rdftriple.{ValidRdfTriple}
-import rdftriple.rdftriple.RdfTriple
-
+import com.elegantcoding.rdfProcessor.{RdfFileProcessor, RfdCleaner, rdfProcessor}
+import com.elegantcoding.rdfProcessor.rdfProcessor.CleanerFunction
+import com.elegantcoding.rdfProcessor.rdfTriple.types._
 
 abstract class NeoRfdCleaner extends RfdCleaner {
 
