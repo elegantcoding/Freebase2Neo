@@ -3,8 +3,6 @@ package com.elegantcoding.freebase2neo
 import java.util.Arrays
 
 class IdMap {
-  def apply:IdMap = new IdMap()
-
   var arr = Array.fill[Long](100000000)(Long.MaxValue)
   var idx = 0
   var flag = false
