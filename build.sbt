@@ -1,4 +1,6 @@
+import sbtassembly.Plugin.AssemblyKeys
 import AssemblyKeys._
+import ls.Plugin.LsKeys
 
 assemblySettings
 
@@ -18,7 +20,8 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.0" % "test",
   "com.typesafe" % "config" % "1.0.2",
   "org.neo4j" % "neo4j" % "2.1.2",
-  "com.elegantcoding" %% "rdf-processor" % "0.3.0"
+  "org.clapper" %% "grizzled-slf4j" % "1.0.2",
+  "com.elegantcoding" %% "rdf-processor" % "0.3.1"
 )
 
 seq(lsSettings :_*)

@@ -1,4 +1,4 @@
-package freebase2neo
+package com.elegantcoding.freebase2neo
 
 import collection.JavaConverters._
 import com.typesafe.config._
