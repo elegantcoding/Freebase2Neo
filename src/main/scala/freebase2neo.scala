@@ -22,11 +22,11 @@ import collection.JavaConverters._
 
 abstract class NeoRdfCleaner extends RdfCleaner {
 
-  override val subjectCleaner = None
-  override val predicateCleaner = None
-  override val objectCleaner = None
+  override val subjectCleaner:CleanerFunction = None
+  override val predicateCleaner:CleanerFunction = None
+  override val objectCleaner:CleanerFunction = None
 
-  val sanitize: CleanerFunction = Option((string: String) => {
+  def sanitize = Option((string: String) => {
     NeoRdfCleaner.sanitizeRegex.replaceAllIn(string, "_")
   })
 
@@ -40,14 +40,14 @@ object NeoRdfCleaner {
 import NeoRdfCleaner._
 
 object processForIdsRdfCleaner extends NeoRdfCleaner {
-  override val subjectCleaner = Some(sanitize)
+  override val subjectCleaner = sanitize
   override val predicateCleaner = None
   override val objectCleaner = None
 }
 
 object processBuildRelationshipsRdfCleaner extends NeoRdfCleaner {
   override val subjectCleaner = None
-  override val predicateCleaner = Some(sanitize)
+  override val predicateCleaner = sanitize
   override val objectCleaner = None
 }
 
@@ -96,10 +96,6 @@ object freebase2NeoProcessor extends NeoRdfFileProcessor {
     )
   }
 
-  override val rdfLineProcessor = (triple:RdfTriple, str:String) => {
-
-  }
-
   def getRdfStream: BufferedReader = {
     new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedTurtleFile))))
   }
@@ -112,11 +108,11 @@ object freebase2NeoProcessor extends NeoRdfFileProcessor {
       new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedTurtleFile))))
     }
 
-    override val rdfCleaner = processForIdsRdfCleaner
+    //override val rdfCleaner = processForIdsRdfCleaner
 
     val processName = "processForIds"
 
-    val rdfLineProcessor = (rdfTriple: RdfTriple, tripleString: String) => {
+    override val rdfLineProcessor:RdfLineProcessor = (rdfTriple: RdfTriple) => {
 
       //writeToStatusLog("setting label: " + tripleString)
       /*if(!idMap.containsMid(rdfTriple.objectString)) {
@@ -141,11 +137,11 @@ object freebase2NeoProcessor extends NeoRdfFileProcessor {
       new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedTurtleFile))))
     }
 
-    override val rdfCleaner = processBuildRelationshipsRdfCleaner
+    override val rdfCleaner:RdfCleaner = processBuildRelationshipsRdfCleaner
 
     val processName = "processBuildRelationships"
 
-    val rdfLineProcessor = (rdfTriple: RdfTriple, tripleString: String) => {
+    val rdfLineProcessor:RdfLineProcessor = (rdfTriple: RdfTriple) => {
 
       if (idMap.containsMid(rdfTriple.subjectString)) {
         // this is a property/relationship of a node
@@ -204,4 +200,5 @@ object freebase2NeoProcessor extends NeoRdfFileProcessor {
     }
   }
 
+  override val rdfLineProcessor: RdfLineProcessor = (triple:RdfTriple) => {}
 }
