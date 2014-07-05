@@ -4,6 +4,7 @@ import java.util.Arrays
 
 class IdMap {
   var arr = Array.fill[Long](100000000)(Long.MaxValue)
+  //var bitset = new collection.mutable.BitSet()
   var idx = 0
   var flag = false
 
@@ -23,6 +24,7 @@ class IdMap {
     flag = false
     arr(idx) = mid
     idx += 1
+    //sqabitset.add(mid)
   }
 
   def get(mid:Long):Long = {

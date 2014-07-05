@@ -52,8 +52,17 @@ object processBuildRelationshipsRdfCleaner extends NeoRdfCleaner {
 }
 
 abstract class NeoRdfFileProcessor extends RdfFileProcessor {
+  //override val rdfCleaner = emptyRdfCleaner
 
+  override def validateRdfTriple(subject: String, predicate: String, obj: String): RdfTriple = {
+    ValidRdfTriple(subject, predicate, obj)
+  }
+}
+
+package object Utils {
   val logger = Logger("com.elegantcoding.freebase2neo")
+  var lastTime = System.currentTimeMillis
+  val ONE_MILLION = 1000000
 
   def formatTime(elapsedTime: Long) = {
     "%02d:%02d:%02d".format(
@@ -65,17 +74,11 @@ abstract class NeoRdfFileProcessor extends RdfFileProcessor {
   def logStatus(processStartTime: Long, rdfLineCount: Long) = {
     if (rdfLineCount % (ONE_MILLION * 10L) == 0) {
       val curTime = System.currentTimeMillis
-      logger.info(processName + ": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
+      logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
         "; last 10M: " + formatTime(curTime - lastTime) +
-        "; process elapsed: " + formatTime(curTime - processStartTime) +
-        " total elapsed: " + formatTime(curTime - startTime))
+        "; process elapsed: " + formatTime(curTime - processStartTime))
       lastTime = curTime
     }
-  }
-  //override val rdfCleaner = emptyRdfCleaner
-
-  override def validateRdfTriple(subject: String, predicate: String, obj: String): RdfTriple = {
-    ValidRdfTriple(subject, predicate, obj)
   }
 }
 
@@ -97,7 +100,7 @@ object freebase2NeoProcessor extends NeoRdfFileProcessor {
   }
 
   def getRdfStream: BufferedReader = {
-    new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedTurtleFile))))
+    new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile))))
   }
 
   def handleInvalidTriple(rdfTriple: RdfTriple, tripleString: String) = {}
@@ -105,7 +108,7 @@ object freebase2NeoProcessor extends NeoRdfFileProcessor {
   object processForIds extends RdfFileProcessor {
 
     def getRdfStream: BufferedReader = {
-      new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedTurtleFile))))
+      new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile))))
     }
 
     //override val rdfCleaner = processForIdsRdfCleaner
@@ -131,10 +134,11 @@ object freebase2NeoProcessor extends NeoRdfFileProcessor {
     }
   }
 
+
   object processBuildRelationships extends RdfFileProcessor {
 
     def getRdfStream: BufferedReader = {
-      new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedTurtleFile))))
+      new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile))))
     }
 
     override val rdfCleaner:RdfCleaner = processBuildRelationshipsRdfCleaner
