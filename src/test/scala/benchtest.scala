@@ -3,27 +3,35 @@ package com.elegantcoding.freebase2neo.test
 import grizzled.slf4j.Logger
 import java.io.FileInputStream
 import org.scalatest._
-import com.elegantcoding.rdfprocessor.NTripleStream
-import com.elegantcoding.rdfprocessor.rdftriple.ValidRdfTriple
+import com.elegantcoding.rdfprocessor.NTripleIterable
 import java.util.zip.GZIPInputStream
 import com.elegantcoding.freebase2neo._
 
 class benchtest extends FlatSpec with ShouldMatchers {
   val logger = Logger("com.elegantcoding.freebase2neo")
+  val idMap = new IdMap()
 
   "bench" should "be able to scan the file" in {
-    val nts = new NTripleStream(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile)))
+    // pass 1, get ids
+    val nts = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile)))
     var count = 0l
     val processStartCount = System.currentTimeMillis
-    nts.stream.map { triple =>
-      ValidRdfTriple(
-        cleanSubject(triple.predicateString),
-        cleanPredicate(triple.predicateString),
-        cleanObject(triple.objectString))
-    }.foreach{ triple =>
-          count = count + 1
-          Utils.logStatus(processStartCount, count)
+    nts.foreach { triple =>
+      if(triple.predicateString == "<http://rdf.freebase.com/ns/type.type.instance>") {
+        val mid = extractId(triple.objectString)
+        idMap.put(mid)
+      }
+      count = count + 1
+      Utils.logStatus(processStartCount, count)
     }
+    logger.info("sorting idMap...")
+    idMap.done
+    logger.info("done sorting/deduping...")
+    // TODO pass 2
+  }
+
+  def extractId(str:String):Long = {
+    mid2long.encode(str.substring(31, str.length()-1))
   }
 
   def cleanSubject(str:String) = {

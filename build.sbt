@@ -22,7 +22,7 @@ libraryDependencies ++= Seq(
   "org.neo4j" % "neo4j" % "2.1.2",
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
   "org.slf4j" % "slf4j-simple" % "1.7.7",
-  "com.elegantcoding" %% "rdf-processor" % "0.3.2"
+  "com.elegantcoding" %% "rdf-processor" % "0.4.0"
 )
 
 seq(lsSettings :_*)
