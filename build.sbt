@@ -25,6 +25,10 @@ libraryDependencies ++= Seq(
   "com.elegantcoding" %% "rdf-processor" % "0.4.0"
 )
 
+fork in Test := true
+
+javaOptions in Test += "-Xmx4g"
+
 seq(lsSettings :_*)
 
 (LsKeys.tags in LsKeys.lsync) := Seq("rdf","neo4j", "neo")
