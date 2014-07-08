@@ -22,17 +22,15 @@ package object Utils {
       (elapsedTime / 1000) % 60)
   }
 
-  def logFirstPass(processStartTime: Long, rdfLineCount: Long) = {
-    var lines = rdfLineCount
+  def logFirstPass(processStartTime: Long, lines: Long) = {
     val curTime = System.currentTimeMillis
-    if (rdfLineCount % 100000 == 0) {
-      logStatus(processStartTime, rdfLineCount)
+    if (lines % 100000 == 0 && lines != 0) {
+      logStatus(processStartTime, lines)
       terminal.moveCursor(10, 5)
       putString("first pass (collecting machine ids)...")
       terminal.moveCursor(10, 6)
       putString("%s elapsed".format(formatTime(curTime - processStartTime)))
       terminal.moveCursor(10, 7)
-      if (lines == 0) lines += 1
       val thousands:Long = lines / 1000
       val millions:Long = lines / 1000000
       val avgKRate:Double = thousands / ((curTime - processStartTime) / 1000)
