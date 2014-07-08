@@ -1,8 +1,19 @@
-import sbtassembly.Plugin.AssemblyKeys
+import sbtassembly.Plugin.{MergeStrategy, AssemblyKeys}
 import AssemblyKeys._
 import ls.Plugin.LsKeys
 
 assemblySettings
+
+mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
+{
+  case PathList(ps @ _*) if ps.last endsWith "CHANGES.txt" => MergeStrategy.discard
+  case PathList(ps @ _*) if ps.last endsWith "LICENSES.txt" => MergeStrategy.discard
+  case PathList(ps @ _*) if ps.last endsWith "ComponentVersion.class" => MergeStrategy.last
+  case x => old(x)
+}
+}
+
+test in assembly := {}
 
 name := "freebase2neo"
 
