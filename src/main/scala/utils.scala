@@ -10,7 +10,10 @@ package object Utils {
   val ONE_MILLION = 1000000
   val terminal = TerminalFacade.createTerminal(Charset.forName("UTF8"))
   terminal.enterPrivateMode
+  terminal.clearScreen
   terminal.setCursorVisible(false)
+  terminal.moveCursor(10, 2)
+  putString("press ctrl-C to quit")
 
   def formatTime(elapsedTime: Long) = {
     "%02d:%02d:%02d".format(
@@ -46,6 +49,8 @@ package object Utils {
 
   def logStatus(processStartTime: Long, rdfLineCount: Long) = {
     val curTime = System.currentTimeMillis
+    val key = terminal.readInput()
+    if (key != null && key.isCtrlPressed && key.getCharacter == 'c') System.exit(0)
     if (rdfLineCount % (ONE_MILLION * 10L) == 0) {
       logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
         "; last 10M: " + formatTime(curTime - lastTime) +
