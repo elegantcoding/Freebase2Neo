@@ -29,11 +29,13 @@ package object Utils {
       terminal.moveCursor(10, 5)
       putString("first pass (collecting machine ids)...")
       terminal.moveCursor(10, 6)
-      putString("%s elapsed".format(formatTime(curTime - processStartTime)))
+      var elapsed = curTime - processStartTime
+      if (elapsed == 0) elapsed = 1
+      putString("%s elapsed".format(formatTime(elapsed)))
       terminal.moveCursor(10, 7)
       val thousands:Long = lines / 1000
       val millions:Long = lines / 1000000
-      val avgKRate:Double = thousands / ((curTime - processStartTime) / 1000)
+      val avgKRate:Double = thousands / (elapsed / 1000)
       val total = 2630000000L
       putString("%dM lines read".format(millions))
       terminal.moveCursor(10, 8)
