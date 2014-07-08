@@ -63,7 +63,7 @@ object Main extends App {
       if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
         val mid = Utils.extractId(triple.subjectString)
         val nodeId:Long = idMap.get(mid)
-        if (!idMap.getCreated(nodeId)) {
+        if (!idMap.getCreated(mid)) {
           idMap.setCreated(mid)
           inserter.createNode(
             nodeId,
