@@ -13,9 +13,6 @@ object Settings {
                    .setAllowMissing(false),
                  ConfigResolveOptions.defaults()
                    .setUseSystemEnvironment(false))
-  //println("DEBUG settings:")
-  //println(config.root().render())
-  //config.checkValid(ConfigFactory.defaultReference(), "rdf2neo")
 
   val fbRdfPrefix = config.getString("fbRdfPrefix")
   val fbRdfPrefixLen = fbRdfPrefix.length()
@@ -25,6 +22,7 @@ object Settings {
   val errorLogFile = config.getString("errorLogFile")
   val statusLogFile = config.getString("statusLogFile")
   val nodeTypeSubjects = config.getList("nodeTypeSubjects").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
+  val ignorePredicates = config.getList("ignorePredicates").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
   val nodeTypeSubjectsConjunctive = config.getList("nodeTypeSubjectsConjunctive").unwrapped.asScala.toSeq.map(_.asInstanceOf[ArrayList[String]].asScala.toSeq)
 
   val nodeTypePredicates = config.getList("nodeTypePredicates").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])

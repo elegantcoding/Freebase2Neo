@@ -11,12 +11,17 @@ package object Utils {
   var bufferedAvgs = Seq[Double]()
   var lastAvgTime = System.currentTimeMillis
   var lastAvgLines = 1000l
+  var line = 2
+  var col = 10
   val terminal = TerminalFacade.createTerminal(Charset.forName("UTF8"))
   terminal.enterPrivateMode
-  terminal.clearScreen
+  clear
   terminal.setCursorVisible(false)
-  terminal.moveCursor(10, 2)
-  putString("press ctrl-C to quit")
+
+  def clear = {
+    terminal.clearScreen
+    putString("press ctrl-C to quit")
+  }
 
   def formatTime(elapsedTime: Long) = {
     "%02d:%02d:%02d".format(
@@ -33,9 +38,9 @@ package object Utils {
     bufferedAvgs.reduce(_ + _) / bufferedAvgs.size.toDouble
   }
 
-  def logFirstPass(processStartTime: Long, lines: Long) = {
+  def logFirstPass(processStartTime: Long, lines: Long, ids:Long) = {
     val curTime = System.currentTimeMillis
-    if (lines % 1000000 == 0 && lines != 0) {
+    if (lines % ONE_MILLION == 0 && lines != 0) {
       var elapsed = curTime - processStartTime
       if (elapsed == 0) elapsed = 1
       val millions:Long = lines / ONE_MILLION
@@ -49,23 +54,83 @@ package object Utils {
       if (bufferedAvg == 0) bufferedAvg = 1
       val total:Long = 2630 * ONE_MILLION
       logStatus(processStartTime, lines)
-      terminal.moveCursor(10, 4)
+      line = 4
+      col = 10
       putString("first pass (collecting machine ids)...")
-      terminal.moveCursor(10, 5)
-      putString("%s elapsed  ".format(formatTime(elapsed)))
-      terminal.moveCursor(10, 6)
-      putString("%dM lines read  ".format(millions))
-      terminal.moveCursor(10, 7)
-      putString("%.0fK lines/sec (cumulative average)     ".format(avgRate / 1000))
-      terminal.moveCursor(10, 8)
-      putString("%.0fK lines/sec (moving average)     ".format(movingAvg / 1000))
-      terminal.moveCursor(10, 9)
-      putString("%.0fK lines/sec (buffered moving average)     ".format(bufferedAvg / 1000))
-      terminal.moveCursor(10, 10)
-      putString("%2.2f%% complete (approx.)    ".format(lines.toDouble / total * 100))
-      terminal.moveCursor(10, 11)
-      putString("%s time remaining (approx.)                   ".format(formatTime(((total - lines) / bufferedAvg * 1000).toLong)))
+      putString("%s elapsed    ".format(formatTime(elapsed)))
+      putString("%dM triples read    ".format(millions))
+      putString("%.0fK triples/sec (cumulative average)     ".format(avgRate / 1000))
+      putString("%.0fK triples/sec (moving average)     ".format(movingAvg / 1000))
+      putString("%.0fK triples/sec (buffered moving average)     ".format(bufferedAvg / 1000))
+      putString("%d machine ids collected       ".format(ids))
+      putString("%2.2f%% complete (approx.)             ".format(lines.toDouble / total * 100))
+      putString("%s time remaining (approx.)               ".format(formatTime(((total - lines) / bufferedAvg * 1000).toLong)))
     }
+  }
+
+  def logFirstPassDone(processStartTime: Long, lines: Long, ids:Long) = {
+    val curTime = System.currentTimeMillis
+    var elapsed = curTime - processStartTime
+    if (elapsed == 0) elapsed = 1
+    val millions:Long = lines / ONE_MILLION
+    val avgRate:Double = lines / elapsed * 1000.0
+    clear
+    line = 4
+    col = 10
+    putString("first pass (collecting machine ids)...")
+    putString("%s elapsed  ".format(formatTime(elapsed)))
+    putString("%dM triples read  ".format(millions))
+    putString("%.0fK triples/sec (average)     ".format(avgRate / 1000))
+    putString("%d machine ids collected".format(ids))
+    putString("finished                                ")
+  }
+
+  def logSecondPass(processStartTime: Long, lines: Long, nodes:Long, rels:Long) = {
+    val curTime = System.currentTimeMillis
+    if (lines % ONE_MILLION == 0 && lines != 0) {
+      var elapsed = curTime - processStartTime
+      if (elapsed == 0) elapsed = 1
+      val millions:Long = lines / ONE_MILLION
+      val avgRate:Double = lines / elapsed * 1000.0
+      var elapsedAvg = curTime - lastAvgTime
+      if (elapsedAvg == 0) elapsedAvg = 1
+      val movingAvg:Double = (lines - lastAvgLines) / elapsedAvg * 1000.0
+      lastAvgLines = lines
+      lastAvgTime = System.currentTimeMillis
+      var bufferedAvg = addToBufferedAvgs(movingAvg)
+      if (bufferedAvg == 0) bufferedAvg = 1
+      val total:Long = 2630 * ONE_MILLION
+      logStatus(processStartTime, lines)
+      line = 11
+      col = 10
+      putString("second pass (creating nodes and relationships)...")
+      putString("%s elapsed    ".format(formatTime(elapsed)))
+      putString("%dM triples read        ".format(millions))
+      putString("%.0fK triples/sec (cumulative average)     ".format(avgRate / 1000))
+      putString("%.0fK triples/sec (moving average)     ".format(movingAvg / 1000))
+      putString("%.0fK triples/sec (buffered moving average)     ".format(bufferedAvg / 1000))
+      putString("%d nodes created       ".format(nodes))
+      putString("%d relationships created       ".format(rels))
+      putString("%2.2f%% complete (approx.)             ".format(lines.toDouble / total * 100))
+      putString("%s time remaining (approx.)               ".format(formatTime(((total - lines) / bufferedAvg * 1000).toLong)))
+    }
+  }
+
+  def logSecondPassDone(processStartTime: Long, lines: Long, nodes:Long, rels:Long) = {
+    val curTime = System.currentTimeMillis
+    var elapsed = curTime - processStartTime
+    if (elapsed == 0) elapsed = 1
+    val millions:Long = lines / ONE_MILLION
+    val avgRate:Double = lines / elapsed * 1000.0
+    line = 11
+    col = 10
+    putString("second pass (creating nodes and relationships)...")
+    putString("%s elapsed  ".format(formatTime(elapsed)))
+    putString("%dM triples read  ".format(millions))
+    putString("%.0fK triples/sec (average)     ".format(avgRate / 1000))
+    putString("%d nodes created".format(nodes))
+    putString("%d relationships created".format(rels))
+    putString("finished                                ")
   }
 
   def logStatus(processStartTime: Long, rdfLineCount: Long) = {
@@ -88,6 +153,8 @@ package object Utils {
   }
 
   def putString(str:String) = {
+    terminal.moveCursor(10, line)
+    line += 1
     str.foreach(c => terminal.putCharacter(c))
   }
 

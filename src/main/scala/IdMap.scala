@@ -1,9 +1,11 @@
 package com.elegantcoding.freebase2neo
 
 import java.util.Arrays
+import collection.mutable.BitSet
 
 class IdMap {
   var arr = Array.fill[Long](200000000)(Long.MaxValue)
+  val createdArr = BitSet()
   var idx:Int = 0
   var flag = false
 
@@ -17,6 +19,24 @@ class IdMap {
 
   def getMid(mid:String) = {
     get(mid2long.encode(mid))
+  }
+
+  def setCreatedMid(mid:String) = {
+    setCreated(mid2long.encode(mid))
+  }
+
+  def setCreated(id:Long) = {
+    val i = get(id)
+    createdArr.add(i)
+  }
+
+  def getCreatedMid(mid:String) = {
+    getCreated(mid2long.encode(mid))
+  }
+
+  def getCreated(id:Long) = {
+    val i = get(id)
+    createdArr(i)
   }
 
   def put(mid:Long) = {
@@ -35,6 +55,7 @@ class IdMap {
   }
 
   def done = {
+    createdArr.clear
     Arrays.sort(arr)
     val arr2 = Array.fill[Long](200000000)(Long.MaxValue)
     var lastx = Long.MinValue

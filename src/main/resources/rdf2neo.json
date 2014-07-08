@@ -7,7 +7,7 @@
   "nodeTypeSubjectsConjunctive":[["computer", "science"]],
   "nodeTypePredicates": ["type.type.instance"],
   "ignoreSubjects":[],
-  "ignorePredicates":[],
+  "ignorePredicates":["<http://rdf.freebase.com/ns/type.type.instance>", "<http://rdf.freebase.com/ns/type.object.type>"],
   "ignoreObjects":[],
   "ignorePredicatePrefixes":[],
   "ignoreSubjectPrefixes":[],
