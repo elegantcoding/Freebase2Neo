@@ -4,8 +4,9 @@ import java.util.Arrays
 import collection.mutable.BitSet
 
 class IdMap {
+  // TODO make this estimate based on file size?
   var arr = Array.fill[Long](200000000)(Long.MaxValue)
-  var createdArr = BitSet()
+  var createdArr = BitSet.empty
   var idx:Int = 0
   var flag = false
 
@@ -56,6 +57,7 @@ class IdMap {
 
   def done = {
     Arrays.sort(arr)
+    // TODO make this estimate based on file size?
     val arr2 = Array.fill[Long](200000000)(Long.MaxValue)
     var lastx = Long.MinValue
     var i = 0
@@ -68,7 +70,7 @@ class IdMap {
     }
     idx = 0
 
-    createdArr = BitSet(i)
+    createdArr = BitSet.empty
     arr = Array.fill[Long](i)(Long.MaxValue)
 
     (0 until i).foreach{x =>
