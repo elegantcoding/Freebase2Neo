@@ -19,7 +19,7 @@ object Main extends App {
       idMap.put(mid)
     }
     count = count + 1
-    Utils.logStatus(processStartCount, count)
+    Utils.logFirstPass(processStartCount, count)
   }
   val start = System.currentTimeMillis()/1000
   logger.info("done reading file...")

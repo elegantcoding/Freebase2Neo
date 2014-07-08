@@ -8,7 +8,7 @@ package object Utils {
   val logger = Logger("com.elegantcoding.freebase2neo")
   var lastTime = System.currentTimeMillis
   val ONE_MILLION = 1000000
-  val terminal = TerminalFacade.createTerminal(System.in, System.out, Charset.forName("UTF8"))
+  val terminal = TerminalFacade.createTerminal(Charset.forName("UTF8"))
   terminal.enterPrivateMode
   terminal.setCursorVisible(false)
 
@@ -19,20 +19,33 @@ package object Utils {
       (elapsedTime / 1000) % 60)
   }
 
-  def logStatus(processStartTime: Long, rdfLineCount: Long) = {
+  def logFirstPass(processStartTime: Long, rdfLineCount: Long) = {
+    var lines = rdfLineCount
     val curTime = System.currentTimeMillis
     if (rdfLineCount % 100000 == 0) {
-      terminal.moveCursor(10, 4)
-      putString("%s elapsed".format(formatTime(curTime-processStartTime)))
+      logStatus(processStartTime, rdfLineCount)
       terminal.moveCursor(10, 5)
-      putString("%dM lines read, at %dK lines/sec (avg.)  ".format(rdfLineCount/1000000, rdfLineCount/1000/((curTime-processStartTime)/1000)))
+      putString("first pass (collecting machine ids)...")
       terminal.moveCursor(10, 6)
-      putString("%dK lines read, at %d lines/sec (avg.)  ".format(rdfLineCount/1000, rdfLineCount/((curTime-processStartTime)/1000)))
+      putString("%s elapsed".format(formatTime(curTime - processStartTime)))
       terminal.moveCursor(10, 7)
-      putString("%2.2f%% complete (approx.) ".format(rdfLineCount.toDouble/26200000L))
+      if (lines == 0) lines += 1
+      val thousands:Long = lines / 1000
+      val millions:Long = lines / 1000000
+      val avgKRate:Double = thousands / ((curTime - processStartTime) / 1000)
+      val total = 2630000000L
+      putString("%dM lines read".format(millions))
       terminal.moveCursor(10, 8)
-      putString("%s time remaining (approx.)  ".format(formatTime((2620000000L-rdfLineCount)/(rdfLineCount/(curTime-processStartTime)))))
+      putString("%.0fK lines/sec (avg.)  ".format(avgKRate))
+      terminal.moveCursor(10, 9)
+      putString("%2.2f%% complete (approx.) ".format(lines.toDouble / total * 100))
+      terminal.moveCursor(10, 10)
+      putString("%s time remaining (approx.)                   ".format(formatTime(((total - lines) / avgKRate).toLong)))
     }
+  }
+
+  def logStatus(processStartTime: Long, rdfLineCount: Long) = {
+    val curTime = System.currentTimeMillis
     if (rdfLineCount % (ONE_MILLION * 10L) == 0) {
       logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
         "; last 10M: " + formatTime(curTime - lastTime) +
