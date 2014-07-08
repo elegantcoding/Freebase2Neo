@@ -32,7 +32,7 @@ package object Utils {
 
   def addToBufferedAvgs(avgKRate:Double):Double = {
     bufferedAvgs ++= Seq(avgKRate)
-    if (bufferedAvgs.size > 300) {
+    if (bufferedAvgs.size > 100) {
       bufferedAvgs = bufferedAvgs.tail
     }
     bufferedAvgs.reduce(_ + _) / bufferedAvgs.size.toDouble
@@ -60,8 +60,8 @@ package object Utils {
       putString("%s elapsed    ".format(formatTime(elapsed)))
       putString("%dM triples read    ".format(millions))
       putString("%.0fK triples/sec (cumulative average)     ".format(avgRate / 1000))
-      putString("%.0fK triples/sec (moving average)     ".format(movingAvg / 1000))
-      putString("%.0fK triples/sec (buffered moving average)     ".format(bufferedAvg / 1000))
+      putString("%.0fK triples/sec (1M moving average)     ".format(movingAvg / 1000))
+      putString("%.0fK triples/sec (100M moving average)     ".format(bufferedAvg / 1000))
       putString("%d machine ids collected       ".format(ids))
       putString("%2.2f%% complete (approx.)             ".format(lines.toDouble / total * 100))
       putString("%s time remaining (approx.)               ".format(formatTime(((total - lines) / bufferedAvg * 1000).toLong)))
@@ -83,6 +83,7 @@ package object Utils {
     putString("%.0fK triples/sec (average)     ".format(avgRate / 1000))
     putString("%d machine ids collected".format(ids))
     putString("finished                                ")
+    bufferedAvgs = Seq[Double]()
   }
 
   def logSecondPass(processStartTime: Long, lines: Long, nodes:Long, rels:Long) = {
@@ -107,8 +108,8 @@ package object Utils {
       putString("%s elapsed    ".format(formatTime(elapsed)))
       putString("%dM triples read        ".format(millions))
       putString("%.0fK triples/sec (cumulative average)     ".format(avgRate / 1000))
-      putString("%.0fK triples/sec (moving average)     ".format(movingAvg / 1000))
-      putString("%.0fK triples/sec (buffered moving average)     ".format(bufferedAvg / 1000))
+      putString("%.0fK triples/sec (1M moving average)     ".format(movingAvg / 1000))
+      putString("%.0fK triples/sec (100M moving average)     ".format(bufferedAvg / 1000))
       putString("%d nodes created       ".format(nodes))
       putString("%d relationships created       ".format(rels))
       putString("%2.2f%% complete (approx.)             ".format(lines.toDouble / total * 100))
