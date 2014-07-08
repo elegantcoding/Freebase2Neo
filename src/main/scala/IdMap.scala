@@ -5,7 +5,7 @@ import collection.mutable.BitSet
 
 class IdMap {
   var arr = Array.fill[Long](200000000)(Long.MaxValue)
-  val createdArr = BitSet()
+  var createdArr = BitSet()
   var idx:Int = 0
   var flag = false
 
@@ -55,7 +55,6 @@ class IdMap {
   }
 
   def done = {
-    createdArr.clear
     Arrays.sort(arr)
     val arr2 = Array.fill[Long](200000000)(Long.MaxValue)
     var lastx = Long.MinValue
@@ -68,7 +67,10 @@ class IdMap {
       lastx = arr(x)
     }
     idx = 0
+
+    createdArr = BitSet(i)
     arr = Array.fill[Long](i)(Long.MaxValue)
+
     (0 until i).foreach{x =>
       arr(idx) = arr2(x)
       idx += 1
