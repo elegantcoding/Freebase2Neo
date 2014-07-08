@@ -7,7 +7,10 @@ import java.nio.charset.Charset
 package object Utils {
   val logger = Logger("com.elegantcoding.freebase2neo")
   var lastTime = System.currentTimeMillis
-  val ONE_MILLION = 1000000
+  val ONE_MILLION = 1000000l
+  var bufferedAvgs = Seq[Double]()
+  var lastAvgTime = System.currentTimeMillis
+  var lastAvgLines = 1000l
   val terminal = TerminalFacade.createTerminal(Charset.forName("UTF8"))
   terminal.enterPrivateMode
   terminal.clearScreen
@@ -22,15 +25,29 @@ package object Utils {
       (elapsedTime / 1000) % 60)
   }
 
+  def addToBufferedAvgs(avgKRate:Double):Double = {
+    bufferedAvgs ++= Seq(avgKRate)
+    if (bufferedAvgs.size > 300) {
+      bufferedAvgs = bufferedAvgs.tail
+    }
+    bufferedAvgs.reduce(_ + _) / bufferedAvgs.size.toDouble
+  }
+
   def logFirstPass(processStartTime: Long, lines: Long) = {
     val curTime = System.currentTimeMillis
-    if (lines % 100000 == 0 && lines != 0) {
+    if (lines % 1000000 == 0 && lines != 0) {
       var elapsed = curTime - processStartTime
-      if (elapsed == 0) elapsed = 1000
-      val thousands:Long = lines / 1000
-      val millions:Long = lines / 1000000
-      val avgKRate:Double = thousands / (elapsed / 1000)
-      val total = 2630000000L
+      if (elapsed == 0) elapsed = 1
+      val millions:Long = lines / ONE_MILLION
+      val avgRate:Double = lines / elapsed * 1000.0
+      var elapsedAvg = curTime - lastAvgTime
+      if (elapsedAvg == 0) elapsedAvg = 1
+      val movingAvg:Double = (lines - lastAvgLines) / elapsedAvg * 1000.0
+      lastAvgLines = lines
+      lastAvgTime = System.currentTimeMillis
+      var bufferedAvg = addToBufferedAvgs(movingAvg)
+      if (bufferedAvg == 0) bufferedAvg = 1
+      val total:Long = 2630 * ONE_MILLION
       logStatus(processStartTime, lines)
       terminal.moveCursor(10, 4)
       putString("first pass (collecting machine ids)...")
@@ -39,11 +56,15 @@ package object Utils {
       terminal.moveCursor(10, 6)
       putString("%dM lines read  ".format(millions))
       terminal.moveCursor(10, 7)
-      putString("%.0fK lines/sec (avg.)     ".format(avgKRate))
+      putString("%.0fK lines/sec (cumulative average)     ".format(avgRate / 1000))
       terminal.moveCursor(10, 8)
-      putString("%2.2f%% complete (approx.)    ".format(lines.toDouble / total * 100))
+      putString("%.0fK lines/sec (moving average)     ".format(movingAvg / 1000))
       terminal.moveCursor(10, 9)
-      putString("%s time remaining (approx.)                   ".format(formatTime(((total - lines) / avgKRate).toLong)))
+      putString("%.0fK lines/sec (buffered moving average)     ".format(bufferedAvg / 1000))
+      terminal.moveCursor(10, 10)
+      putString("%2.2f%% complete (approx.)    ".format(lines.toDouble / total * 100))
+      terminal.moveCursor(10, 11)
+      putString("%s time remaining (approx.)                   ".format(formatTime(((total - lines) / bufferedAvg * 1000).toLong)))
     }
   }
 
