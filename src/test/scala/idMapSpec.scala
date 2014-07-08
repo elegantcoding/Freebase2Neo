@@ -22,6 +22,7 @@ class idMapSpec extends FlatSpec with ShouldMatchers {
     idMap.done
     idMap.contains(123) should equal(true)
     idMap.contains(1) should equal(false)
+    idMap.length should equal(1)
   }
 
   it should "be able to get the ids out of the map" in {
@@ -29,6 +30,18 @@ class idMapSpec extends FlatSpec with ShouldMatchers {
     idMap.put(321)
     idMap.put(123)
     idMap.done
+    idMap.get(123) should equal(0)
+    idMap.get(321) should equal(1)
+    idMap.length should equal(2)
+  }
+
+  it should "be able to sort/dedup" in {
+    val idMap = new IdMap()
+    idMap.put(321)
+    idMap.put(123)
+    idMap.put(123)
+    idMap.done
+    idMap.length should equal(2)
     idMap.get(123) should equal(0)
     idMap.get(321) should equal(1)
   }

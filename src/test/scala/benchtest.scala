@@ -24,11 +24,12 @@ class benchtest extends FlatSpec with ShouldMatchers {
       count = count + 1
       Utils.logStatus(processStartCount, count)
     }
+    val start = System.currentTimeMillis()/1000
     logger.info("done reading file...")
     logger.info("idmap length: " + idMap.length)
     logger.info("sorting idMap...")
     idMap.done
-    logger.info("done sorting/deduping...")
+    logger.info("done sorting/deduping... in "+(System.currentTimeMillis()-start)/1000)
     logger.info("idmap length: " + idMap.length)
     // TODO pass 2
   }

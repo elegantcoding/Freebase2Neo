@@ -36,17 +36,22 @@ class IdMap {
 
   def done = {
     Arrays.sort(arr)
-    val arr2 = Array.fill[Long](150000000)(Long.MaxValue)
+    val arr2 = Array.fill[Long](200000000)(Long.MaxValue)
     var lastx = Long.MinValue
     var i = 0
-    arr.foreach{x =>
-      if(x != lastx) {
-        arr2(i) = x
+    (0 until idx).foreach{x =>
+      if(arr(x) != lastx) {
+        arr2(i) = arr(x)
         i += 1
       }
-      lastx = x
+      lastx = arr(x)
     }
-    arr = arr2
+    idx = 0
+    arr = Array.fill[Long](i)(Long.MaxValue)
+    (0 until i).foreach{x =>
+      arr(idx) = arr2(x)
+      idx += 1
+    }
     flag = true
   }
 

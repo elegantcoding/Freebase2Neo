@@ -59,29 +59,6 @@ abstract class NeoRdfFileProcessor extends RdfFileProcessor {
   }
 }
 
-package object Utils {
-  val logger = Logger("com.elegantcoding.freebase2neo")
-  var lastTime = System.currentTimeMillis
-  val ONE_MILLION = 1000000
-
-  def formatTime(elapsedTime: Long) = {
-    "%02d:%02d:%02d".format(
-      (elapsedTime / 1000) / 3600,
-      ((elapsedTime / 1000) / 60) % 60,
-      (elapsedTime / 1000) % 60)
-  }
-
-  def logStatus(processStartTime: Long, rdfLineCount: Long) = {
-    if (rdfLineCount % (ONE_MILLION * 10L) == 0) {
-      val curTime = System.currentTimeMillis
-      logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
-        "; last 10M: " + formatTime(curTime - lastTime) +
-        "; process elapsed: " + formatTime(curTime - processStartTime))
-      lastTime = curTime
-    }
-  }
-}
-
 object freebase2NeoProcessor extends NeoRdfFileProcessor {
 
   val neoFlag = true
