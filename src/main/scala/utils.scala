@@ -30,7 +30,7 @@ package object Utils {
       putString("first pass (collecting machine ids)...")
       terminal.moveCursor(10, 6)
       var elapsed = curTime - processStartTime
-      if (elapsed == 0) elapsed = 1
+      if (elapsed == 0) elapsed = 1000
       putString("%s elapsed".format(formatTime(elapsed)))
       terminal.moveCursor(10, 7)
       val thousands:Long = lines / 1000
