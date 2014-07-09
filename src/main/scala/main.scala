@@ -62,40 +62,44 @@ object Main extends App {
       // if subject is an mid
       if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
         val mid = Utils.extractId(triple.subjectString)
-        val nodeId:Long = idMap.get(mid)
-        if (!idMap.getCreated(mid)) {
-          idMap.setCreated(mid)
-          inserter.createNode(
-            nodeId,
-            Map[String,Object]("mid" -> mid2long.decode(mid)).asJava,
-            freebaseLabel
-          )
-          nodes += 1
-        }
-        // if predicate isn't ignored
-        if (!Settings.ignorePredicates.contains(triple.predicateString)) {
-          // if object is an mid (this is a relationship)
-          if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
-            val objMid = Utils.extractId(triple.objectString)
-            val objNodeId: Long = idMap.get(objMid)
-            if (!idMap.getCreated(objMid)) {
-              idMap.setCreated(objMid)
-              inserter.createNode(
-                objNodeId,
-                Map[String, Object]("mid" -> mid2long.decode(objMid)).asJava,
-                freebaseLabel
-              )
-              nodes += 1
-            }
-            // create relationship
-            inserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
-            rels += 1
-          } else {
-            // TODO handle properties?
+        val nodeId: Long = idMap.get(mid)
+        if (nodeId >= 0) {
+          if (!idMap.getCreated(mid)) {
+            idMap.setCreated(mid)
+            inserter.createNode(
+              nodeId,
+              Map[String, Object]("mid" -> mid2long.decode(mid)).asJava,
+              freebaseLabel
+            )
+            nodes += 1
           }
+          // if predicate isn't ignored
+          if (!Settings.ignorePredicates.contains(triple.predicateString)) {
+            // if object is an mid (this is a relationship)
+            if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
+              val objMid = Utils.extractId(triple.objectString)
+              val objNodeId: Long = idMap.get(objMid)
+              if (objNodeId >= 0) {
+                if (!idMap.getCreated(objMid)) {
+                  idMap.setCreated(objMid)
+                  inserter.createNode(
+                    objNodeId,
+                    Map[String, Object]("mid" -> mid2long.decode(objMid)).asJava,
+                    freebaseLabel
+                  )
+                  nodes += 1
+                }
+                // create relationship
+                inserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
+                rels += 1
+              }
+            } else {
+              // TODO handle properties?
+            }
+          }
+        } else {
+          // TODO handle labels?
         }
-      } else {
-        // TODO handle labels?
       }
       count = count + 1
       Utils.logSecondPass(processStartCount, count, nodes, rels)
