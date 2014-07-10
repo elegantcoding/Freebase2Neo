@@ -70,7 +70,7 @@ class IdMap {
     }
     idx = 0
 
-    createdArr = BitSet.empty
+    createdArr = BitSet(i)
     arr = Array.fill[Long](i)(Long.MaxValue)
 
     (0 until i).foreach{x =>

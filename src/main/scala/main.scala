@@ -24,41 +24,58 @@ object Main extends App {
     ).asJava
   )
 
-  getIdsFirstPass
-  buildRelationshipsSecondPass
+  getIds
+  persistIdMap
+  createNodes
+  createRelationships
 
   inserter.shutdown
   logger.info("done!")
 
-  def getIdsFirstPass = {
-    logger.info("starting first pass (collecting machine ids)...")
-    val nts = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile), 65536*16))
+  def getIds = {
+    logger.info("starting pass (collecting machine ids)...")
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile), 65536*16))
     var count = 0l
     val processStartCount = System.currentTimeMillis
-    nts.foreach { triple =>
+    nti.foreach { triple =>
       if (triple.predicateString == "<http://rdf.freebase.com/ns/type.type.instance>") {
         val mid = Utils.extractId(triple.objectString)
         idMap.put(mid)
       }
       count = count + 1
-      Utils.logFirstPass(processStartCount, count, idMap.length)
+      Utils.logGetIdsPass(processStartCount, count, idMap.length)
     }
-    val start = System.currentTimeMillis()/1000
-    logger.info("sorting idMap...")
-    idMap.done
-    logger.info("done sorting/deduping... in "+(System.currentTimeMillis()-start)/1000)
-    logger.info("final idmap length: " + idMap.length)
-    Utils.logFirstPassDone(processStartCount, count, idMap.length)
+    logger.info("done pass (collecting machine ids)...")
+    Utils.logGetIdsPassDone(processStartCount, count, idMap.length)
+    // TODO persistIdMap
   }
 
-  def buildRelationshipsSecondPass = {
-    logger.info("starting second pass...")
-    val nts = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile), 65536*16))
+  def persistIdMap = {
+    logger.info("starting persisting the id map...")
+    idMap.done // sorts id map, etc.
+
+    logger.info("done persisting the id map...")
+  }
+
+  def createNodes = {
+    logger.info("starting creating the nodes...")
+    val start = System.currentTimeMillis()
+    (0 until idMap.length).foreach { i =>
+      inserter.createNode(i, null, freebaseLabel)
+      Utils.logCreateNodesPass(start, i)
+    }
+    Utils.logCreateNodesPassDone(start, i)
+    logger.info("done creating the nodes...")
+  }
+
+  def buildRelationshipsThirdPass = {
+    logger.info("starting third pass...")
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile), 65536*16))
     var count = 0l
     var rels = 0l
     var nodes = 0l
     val processStartCount = System.currentTimeMillis
-    nts.foreach { triple =>
+    nti.foreach { triple =>
       // if subject is an mid
       if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
         val mid = Utils.extractId(triple.subjectString)
@@ -80,15 +97,6 @@ object Main extends App {
               val objMid = Utils.extractId(triple.objectString)
               val objNodeId: Long = idMap.get(objMid)
               if (objNodeId >= 0) {
-                if (!idMap.getCreated(objMid)) {
-                  idMap.setCreated(objMid)
-                  inserter.createNode(
-                    objNodeId,
-                    Map[String, Object]("mid" -> mid2long.decode(objMid)).asJava,
-                    freebaseLabel
-                  )
-                  nodes += 1
-                }
                 // create relationship
                 inserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
                 rels += 1
@@ -104,7 +112,7 @@ object Main extends App {
       count = count + 1
       Utils.logSecondPass(processStartCount, count, nodes, rels)
     }
-    logger.info("done second pass...")
+    logger.info("done third pass...")
     Utils.logSecondPassDone(processStartCount, count, nodes, rels)
   }
 
