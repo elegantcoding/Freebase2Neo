@@ -24,29 +24,30 @@ object Main extends App {
     ).asJava
   )
 
-  getIds
+  getIdsPass
   persistIdMap
   createNodes
-  createRelationships
+  createRelationshipsPass
 
   inserter.shutdown
   logger.info("done!")
 
-  def getIds = {
+  def getIdsPass = {
     logger.info("starting pass (collecting machine ids)...")
     val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile), 65536*16))
     var count = 0l
-    val processStartCount = System.currentTimeMillis
+    val start = System.currentTimeMillis
+    val total = 2625000000l
     nti.foreach { triple =>
       if (triple.predicateString == "<http://rdf.freebase.com/ns/type.type.instance>") {
         val mid = Utils.extractId(triple.objectString)
         idMap.put(mid)
       }
       count = count + 1
-      Utils.logGetIdsPass(processStartCount, count, idMap.length)
+      Utils.logPass(1, "get machine ids", start, total, count, idMap.length, "machine ids")
     }
     logger.info("done pass (collecting machine ids)...")
-    Utils.logGetIdsPassDone(processStartCount, count, idMap.length)
+    Utils.logPassDone(1, "get machine ids", start, count, idMap.length, "machine ids")
     // TODO persistIdMap
   }
 
@@ -62,34 +63,24 @@ object Main extends App {
     val start = System.currentTimeMillis()
     (0 until idMap.length).foreach { i =>
       inserter.createNode(i, null, freebaseLabel)
-      Utils.logCreateNodesPass(start, i)
+      Utils.logPass(2, "create nodes", idMap.length, start, i)
     }
-    Utils.logCreateNodesPassDone(start, i)
+    Utils.logPassDone(2, "create nodes", start, i)
     logger.info("done creating the nodes...")
   }
 
-  def buildRelationshipsThirdPass = {
+  def createRelationshipsPass = {
     logger.info("starting third pass...")
     val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile), 65536*16))
     var count = 0l
     var rels = 0l
-    var nodes = 0l
-    val processStartCount = System.currentTimeMillis
+    val start = System.currentTimeMillis
     nti.foreach { triple =>
       // if subject is an mid
       if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
         val mid = Utils.extractId(triple.subjectString)
         val nodeId: Long = idMap.get(mid)
         if (nodeId >= 0) {
-          if (!idMap.getCreated(mid)) {
-            idMap.setCreated(mid)
-            inserter.createNode(
-              nodeId,
-              Map[String, Object]("mid" -> mid2long.decode(mid)).asJava,
-              freebaseLabel
-            )
-            nodes += 1
-          }
           // if predicate isn't ignored
           if (!Settings.ignorePredicates.contains(triple.predicateString)) {
             // if object is an mid (this is a relationship)
@@ -110,10 +101,10 @@ object Main extends App {
         }
       }
       count = count + 1
-      Utils.logSecondPass(processStartCount, count, nodes, rels)
+      Utils.logPass(3, "create relationships", start, count, rels)
     }
     logger.info("done third pass...")
-    Utils.logSecondPassDone(processStartCount, count, nodes, rels)
+    Utils.logPassDone(3, "create relationships", start, count, rels)
   }
 
   def sanitize(s:String) = {
