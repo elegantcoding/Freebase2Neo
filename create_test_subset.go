@@ -2,55 +2,123 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
+	"log"
 	"os"
+	"strings"
 )
 
-func main() {
-	freebase := os.Args[1]
-	subset := os.Args[2]
-	m := make(map[string]bool)
+var m map[string]bool
+var s []string
 
-	sf, err := os.Open(subset)
+func zipLineIter(filename string, ch chan string) {
+	f, err := os.Open(filename)
 	if err != nil {
 		panic(err)
 	}
-	defer sf.Close()
-	sfr := bufio.NewReader(sf)
+	z, err := gzip.NewReader(bufio.NewReader(f))
+	if err != nil {
+		panic(err)
+	}
+	r := bufio.NewReader(z)
 
-	for line, _, err := sfr.ReadLine(); err != io.EOF; line, _, err = sfr.ReadLine() {
-		lines := bytes.Split(line, []byte("\t"))
-		if len(lines) < 3 {
-			break
+	for line, _, err := r.ReadLine(); err == nil; line, _, err = r.ReadLine() {
+		ch <- string(line)
+	}
+	close(ch)
+	f.Close()
+}
+
+func searchRels(gzfile string) {
+	log.Printf("searching for related records\n")
+	ch := make(chan string, 1024*1024)
+	go zipLineIter(gzfile, ch)
+	count := 0
+	for line := range ch {
+		count++
+		if count%100000000 == 0 {
+			log.Printf("searchRels has scanned %dM lines, triples: %d\n", count/1000000, len(s))
 		}
-		m[string(lines[2])] = true
-	}
-
-	//fmt.Println("done building map...")
-
-	ff, err := os.Open(freebase)
-	if err != nil {
-		panic(err)
-	}
-	defer ff.Close()
-	ffz, err := gzip.NewReader(ff)
-	if err != nil {
-		panic(err)
-	}
-	ffr := bufio.NewReader(ffz)
-
-	for line, _, err := ffr.ReadLine(); err != io.EOF; line, _, err = ffr.ReadLine() {
-		lines := bytes.Split(line, []byte("\t"))
+		lines := strings.Split(line, "\t")
 		if len(lines) < 3 {
 			continue
 		}
-		if _, ok := m[string(lines[0])]; ok {
-			fmt.Println(string(line))
-		} else if _, ok := m[string(lines[2])]; ok {
-			fmt.Println(string(line))
+		if _, ok := m[lines[0]]; ok {
+			s = append(s, line)
+		} else if _, ok := m[lines[2]]; ok {
+			s = append(s, line)
 		}
 	}
+}
+
+func searchInstances(searchstring, gzfile string) {
+	log.Printf("searching for instances containing %s\n", searchstring)
+	ch := make(chan string, 1024*1024)
+	go zipLineIter(gzfile, ch)
+	count := 0
+	for line := range ch {
+		count++
+		if count%100000000 == 0 {
+			log.Printf("searchInstances has scanned %dM lines, found %d instances\n", count/1000000, len(m))
+		}
+		if len(line) == 0 {
+			continue
+		}
+		if strings.Contains(line, searchstring) &&
+			strings.Contains(line, "type.type.instance") {
+			lines := strings.Split(line, "\t")
+			if len(lines) < 3 {
+				break
+			}
+			m[lines[2]] = true
+		}
+	}
+}
+
+func filterNodes() {
+	log.Println("filtering to just nodes...")
+	newS := []string{}
+	for i, _ := range s {
+		if strings.Contains(s[i], "type.type.instance") {
+			newS = append(newS, s[i])
+			lines := strings.Split(s[i], "\t")
+			if len(lines) < 3 {
+				break
+			}
+			m[lines[2]] = true
+		}
+	}
+	s = newS
+}
+
+func outputSubset(outfile string) {
+	log.Println("writing to file...")
+	out, err := os.OpenFile(outfile, os.O_APPEND, 0666)
+	if err != nil {
+		log.Println(err)
+	}
+	defer out.Close()
+
+	for _, x := range s {
+		io.WriteString(out, x)
+	}
+}
+
+func main() {
+	if len(os.Args) < 4 {
+		log.Fatal("not enough args given. usage:\n create_test_subset freebase-dump.gz <searchstring> <outputfile>\n")
+	}
+	freebase := os.Args[1]
+	searchstring := os.Args[2]
+	outfile := os.Args[3]
+
+	m = map[string]bool{}
+	s = []string{}
+
+	searchInstances(searchstring, freebase)
+	searchRels(freebase)
+	filterNodes()
+	searchRels(freebase)
+	outputSubset(outfile)
 }
