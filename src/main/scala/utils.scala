@@ -13,6 +13,7 @@ package object Utils {
   var shortItemMovingAvgs = Seq[Double]()
   var lastAvgTime = System.currentTimeMillis
   var lastAvgLines = 1000l
+  var lastAvgItems = 1000l
   var line = 2
   var col = 10
   val terminal = TerminalFacade.createTerminal(Charset.forName("UTF8"))
@@ -58,12 +59,11 @@ package object Utils {
     shortItemMovingAvgs.reduce(_ + _) / shortItemMovingAvgs.size.toDouble
   }
 
-  def logProgress(stage:Int, desc:String, start: Long, total:Long, lines: Long, itemCount:Long, itemDesc:String) = {
+  def displayProgress(stage:Int, desc:String, startTime: Long, total:Long, totalDesc:String, lines: Long, itemCount:Long, itemDesc:String) = {
     val curTime = System.currentTimeMillis
     if (curTime - 1000 > lastAvgTime) {
-      var elapsed = curTime - start
+      var elapsed = curTime - startTime
       if (elapsed == 0) elapsed = 1
-      val millions:Long = lines / ONE_MILLION
       val avgRate:Double = lines / elapsed * 1000.0
       var elapsedAvg = curTime - lastAvgTime
       if (elapsedAvg == 0) elapsedAvg = 1
@@ -74,90 +74,37 @@ package object Utils {
       if (shortMovingAvg == 0) shortMovingAvg = 1
       var longMovingAvg:Double = latestLongMovingAvg(secondAvg)
       if (longMovingAvg == 0) longMovingAvg = 1
+      val secondItemAvg:Double = (itemCount - lastAvgItems) / elapsedAvg * 1000.0
       lastAvgItems = itemCount
-      var shortItemMovingAvg:Double = latestItemShortMovingAvg(secondAvg)
+      var shortItemMovingAvg:Double = latestItemShortMovingAvg(secondItemAvg)
       if (shortItemMovingAvg == 0) shortItemMovingAvg = 1
-      logStatus(start, lines)
-      line = 4
+      logStatus(startTime, lines)
+      line = stage * 5 - 2
       col = 10
-      putString("stage %d (%s)...".format(stage))
+      putString("stage %d (%s)...".format(stage, desc))
       putString("%s elapsed    ".format(formatTime(elapsed)))
-      putString("%dM triples read    ".format(millions))
-      putString("%.3fM triples/sec (cumulative average)     ".format(avgRate / ONE_MILLION))
-      putString("%.3fM triples/sec (10 second moving average)     ".format(shortMovingAvg / ONE_MILLION))
-      putString("%.3fM triples/sec (10 min moving average)     ".format(longMovingAvg / ONE_MILLION))
+      putString("%.3fM %s processed        ".format(lines / ONE_MILLION.toDouble, totalDesc))
+      putString("%.3fM %s/sec (cumulative average)     ".format(avgRate / ONE_MILLION, totalDesc))
+      putString("%.3fM %s/sec (10 second moving average)     ".format(shortMovingAvg / ONE_MILLION, totalDesc))
+      putString("%.3fM %s/sec (10 min moving average)     ".format(longMovingAvg / ONE_MILLION, totalDesc))
       putString("%d %s       ".format(itemCount, itemDesc))
-      putString("%.3fM %s/sec (10 second moving average)     ".format(itemShortMovingAvg / ONE_MILLION))
+      putString("%.3fM %s/sec (10 second moving average)     ".format(shortItemMovingAvg / ONE_MILLION, itemDesc))
       putString("%2.2f%% complete (approx.)             ".format(lines.toDouble / total * 100))
       putString("%s time remaining (approx.)               ".format(formatTime(((total - lines) / longMovingAvg * 1000).toLong)))
     }
   }
 
-  def logDone(stage:Int, desc:String, processStartTime: Long, lines: Long, ids:Long) = {
+  def displayDone(stage:Int, desc:String, startTime: Long, total: Long, totalDesc:String, itemCount:Long, itemDesc:String) = {
     val curTime = System.currentTimeMillis
-    var elapsed = curTime - processStartTime
+    var elapsed = curTime - startTime
     if (elapsed == 0) elapsed = 1
-    val millions:Long = lines / ONE_MILLION
-    val avgRate:Double = lines / elapsed * 1000.0
-    clear
-    line = 4
+    val avgRate:Double = total / elapsed * 1000.0
+    val itemAvg:Double = itemCount / elapsed * 1000.0
+    line = stage * 5 - 2
     col = 10
-    putString("first pass (collecting machine ids)...")
-    putString("%s elapsed  ".format(formatTime(elapsed)))
-    putString("%dM triples read  ".format(millions))
-    putString("%.3fM triples/sec (average)     ".format(avgRate / ONE_MILLION))
-    putString("%d machine ids collected".format(ids))
-    putString("finished                                ")
-  }
-
-  def logSecondPass(processStartTime: Long, lines: Long, nodes:Long, rels:Long) = {
-    val curTime = System.currentTimeMillis
-    if (curTime - 1000 > lastAvgTime) {
-      var elapsed = curTime - processStartTime
-      if (elapsed == 0) elapsed = 1
-      val millions:Long = lines / ONE_MILLION
-      val avgRate:Double = lines / elapsed * 1000.0
-      var elapsedAvg = curTime - lastAvgTime
-      if (elapsedAvg == 0) elapsedAvg = 1
-      val secondAvg:Double = (lines - lastAvgLines) / elapsedAvg * 1000.0
-      lastAvgLines = lines
-      lastAvgTime = System.currentTimeMillis
-      var shortMovingAvg:Double = latestShortMovingAvg(secondAvg)
-      if (shortMovingAvg == 0) shortMovingAvg = 1
-      var longMovingAvg:Double = latestLongMovingAvg(secondAvg)
-      if (longMovingAvg == 0) longMovingAvg = 1
-      val total:Long = 2630 * ONE_MILLION
-      logStatus(processStartTime, lines)
-      line = 11
-      col = 10
-      putString("second pass (creating nodes and relationships)...")
-      putString("%s elapsed    ".format(formatTime(elapsed)))
-      putString("%dM triples read        ".format(millions))
-      putString("%.3fM triples/sec (cumulative average)     ".format(avgRate / ONE_MILLION))
-      putString("%.3fM triples/sec (10 second moving average)     ".format(shortMovingAvg / ONE_MILLION))
-      putString("%.3fM triples/sec (10 min moving average)     ".format(longMovingAvg / ONE_MILLION))
-      putString("%d nodes created       ".format(nodes))
-      putString("%d relationships created       ".format(rels))
-      putString("%2.2f%% complete (approx.)             ".format(lines.toDouble / total * 100))
-      putString("%s time remaining (approx.)               ".format(formatTime(((total - lines) / longMovingAvg * 1000).toLong)))
-    }
-  }
-
-  def logSecondPassDone(processStartTime: Long, lines: Long, nodes:Long, rels:Long) = {
-    val curTime = System.currentTimeMillis
-    var elapsed = curTime - processStartTime
-    if (elapsed == 0) elapsed = 1
-    val millions:Long = lines / ONE_MILLION
-    val avgRate:Double = lines / elapsed * 1000.0
-    line = 11
-    col = 10
-    putString("second pass (creating nodes and relationships)...")
-    putString("%s elapsed  ".format(formatTime(elapsed)))
-    putString("%dM triples read  ".format(millions))
-    putString("%.3fM triples/sec (average)     ".format(avgRate / ONE_MILLION))
-    putString("%d nodes created".format(nodes))
-    putString("%d relationships created".format(rels))
-    putString("finished                                ")
+    putString("stage %d (%s) complete. elapsed: %s   ".format(stage, desc, formatTime(elapsed)))
+    putString("%d %s processed, %d %s                   ".format(total, totalDesc, itemCount, itemDesc))
+    putString("%.3fM %s/sec (average); %.3fM %s/sec (average) ".format(avgRate / ONE_MILLION, totalDesc, itemAvg / ONE_MILLION, itemDesc))
   }
 
   def logStatus(processStartTime: Long, rdfLineCount: Long) = {

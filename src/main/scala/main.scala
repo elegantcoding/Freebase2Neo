@@ -44,17 +44,16 @@ object Main extends App {
         idMap.put(mid)
       }
       count = count + 1
-      Utils.logPass(1, "get machine ids", start, total, count, idMap.length, "machine ids")
+      Utils.displayProgress(1, "get machine ids", start, total, "triples", count, idMap.length, "machine ids")
     }
     logger.info("done pass (collecting machine ids)...")
-    Utils.logPassDone(1, "get machine ids", start, count, idMap.length, "machine ids")
-    // TODO persistIdMap
+    Utils.displayDone(1, "get machine ids", start, count, "triples", idMap.length, "machine ids")
   }
 
   def persistIdMap = {
     logger.info("starting persisting the id map...")
     idMap.done // sorts id map, etc.
-
+    // TODO persistIdMap
     logger.info("done persisting the id map...")
   }
 
@@ -63,17 +62,18 @@ object Main extends App {
     val start = System.currentTimeMillis()
     (0 until idMap.length).foreach { i =>
       inserter.createNode(i, null, freebaseLabel)
-      Utils.logPass(2, "create nodes", idMap.length, start, i)
+      Utils.displayProgress(2, "create nodes", start, idMap.length, "nodes", i, i, "nodes")
     }
-    Utils.logPassDone(2, "create nodes", start, i)
+    Utils.displayDone(2, "create nodes", start, idMap.length, "nodes", idMap.length, "nodes")
     logger.info("done creating the nodes...")
   }
 
   def createRelationshipsPass = {
-    logger.info("starting third pass...")
+    logger.info("starting create relationships pass...")
     val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile), 65536*16))
     var count = 0l
     var rels = 0l
+    val total = 2625000000l
     val start = System.currentTimeMillis
     nti.foreach { triple =>
       // if subject is an mid
@@ -101,10 +101,10 @@ object Main extends App {
         }
       }
       count = count + 1
-      Utils.logPass(3, "create relationships", start, count, rels)
+      Utils.displayProgress(3, "create relationships", start, total, "triples", count, rels, "relationships")
     }
     logger.info("done third pass...")
-    Utils.logPassDone(3, "create relationships", start, count, rels)
+    Utils.displayDone(3, "create relationships", start, count, "triples", rels, "relationships")
   }
 
   def sanitize(s:String) = {
