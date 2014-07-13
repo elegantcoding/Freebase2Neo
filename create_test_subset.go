@@ -37,6 +37,9 @@ func searchRels(gzfile string) {
 	count := 0
 	for line := range ch {
 		count++
+		if count > 5000000 {
+			//	break
+		}
 		if count%100000000 == 0 {
 			log.Printf("searchRels has scanned %dM lines, triples: %d\n", count/1000000, len(s))
 		}
@@ -59,6 +62,9 @@ func searchInstances(searchstring, gzfile string) {
 	count := 0
 	for line := range ch {
 		count++
+		if count > 400000000 {
+			break
+		}
 		if count%100000000 == 0 {
 			log.Printf("searchInstances has scanned %dM lines, found %d instances\n", count/1000000, len(m))
 		}
@@ -77,16 +83,20 @@ func searchInstances(searchstring, gzfile string) {
 }
 
 func filterNodes() {
-	log.Println("filtering to just nodes...")
+	log.Println("filtering to just nodes and types...")
 	newS := []string{}
 	for i, _ := range s {
-		if strings.Contains(s[i], "type.type.instance") {
+		lines := strings.Split(s[i], "\t")
+		if len(lines) < 3 {
+			break
+		}
+		if strings.Contains(lines[2], "<http://rdf.freebase.com/ns/m.") {
 			newS = append(newS, s[i])
-			lines := strings.Split(s[i], "\t")
-			if len(lines) < 3 {
-				break
-			}
 			m[lines[2]] = true
+		}
+		if strings.Contains(lines[0], "<http://rdf.freebase.com/ns/m.") {
+			newS = append(newS, s[i])
+			m[lines[0]] = true
 		}
 	}
 	s = newS
@@ -94,14 +104,17 @@ func filterNodes() {
 
 func outputSubset(outfile string) {
 	log.Println("writing to file...")
-	out, err := os.OpenFile(outfile, os.O_APPEND, 0666)
+	out, err := os.Create(outfile)
 	if err != nil {
 		log.Println(err)
 	}
 	defer out.Close()
 
 	for _, x := range s {
-		io.WriteString(out, x)
+		_, err := io.WriteString(out, x+"\n")
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -117,6 +130,8 @@ func main() {
 	s = []string{}
 
 	searchInstances(searchstring, freebase)
+	searchRels(freebase)
+	filterNodes()
 	searchRels(freebase)
 	filterNodes()
 	searchRels(freebase)

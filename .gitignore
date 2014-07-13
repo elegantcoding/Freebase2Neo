@@ -1,5 +1,4 @@
 .DS_Store
-subset.*
 freebase*.gz
 target/
 project/target/

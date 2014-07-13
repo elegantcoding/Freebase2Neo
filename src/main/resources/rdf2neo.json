@@ -1,6 +1,6 @@
 {
   "outputGraphPath":"/Users/wfreeman/Freebase2Neo/rdf2neo-test/",
-  "gzippedNTripleFile":"/Users/wfreeman/Freebase2Neo/freebase-rdf-2014-06-29-00-00.gz",
+  "gzippedNTripleFile":"/Users/wfreeman/Freebase2Neo/subset.ntriple.gz",
   "errorLogFile" : "/Users/wfreeman/Freebase2Neo/errorLog.txt",
   "statusLogFile" : "/Users/wfreeman/Freebase2Neo/statusLog.txt",
   "nodeTypeSubjects": ["math"],
