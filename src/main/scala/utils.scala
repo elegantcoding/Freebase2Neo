@@ -79,18 +79,18 @@ package object Utils {
       var shortItemMovingAvg:Double = latestItemShortMovingAvg(secondItemAvg)
       if (shortItemMovingAvg == 0) shortItemMovingAvg = 1
       logStatus(startTime, lines)
-      line = stage * 5 - 2
+      line = stage * 4 - 2
       col = 10
-      putString("stage %d (%s)...               ".format(stage, desc))
-      putString("%s elapsed                               ".format(formatTime(elapsed)))
-      putString("%.3fM %s processed                       ".format(lines / ONE_MILLION.toDouble, totalDesc))
-      putString("%.3fM %s/sec (cumulative average)        ".format(avgRate / ONE_MILLION, totalDesc))
-      putString("%.3fM %s/sec (10 second moving average)     ".format(shortMovingAvg / ONE_MILLION, totalDesc))
-      putString("%.3fM %s/sec (10 min moving average)     ".format(longMovingAvg / ONE_MILLION, totalDesc))
-      putString("%d %s                       ".format(itemCount, itemDesc))
-      putString("%.3fM %s/sec (10 second moving average)     ".format(shortItemMovingAvg / ONE_MILLION, itemDesc))
-      putString("%2.2f%% complete (approx.)                  ".format(lines.toDouble / total * 100))
-      putString("%s time remaining (approx.)                  ".format(formatTime(((total - lines) / longMovingAvg * 1000).toLong)))
+      putString("stage %d (%s)...                               ".format(stage, desc))
+      putString("%s elapsed                                     ".format(formatTime(elapsed)))
+      putString("%.3fM %s processed                             ".format(lines / ONE_MILLION.toDouble, totalDesc))
+      putString("%.3fM %s/sec (cumulative average)              ".format(avgRate / ONE_MILLION, totalDesc))
+      putString("%.3fM %s/sec (10 second moving average)        ".format(shortMovingAvg / ONE_MILLION, totalDesc))
+      putString("%.3fM %s/sec (10 min moving average)           ".format(longMovingAvg / ONE_MILLION, totalDesc))
+      putString("%d %s                                          ".format(itemCount, itemDesc))
+      putString("%.3fM %s/sec (10 second moving average)        ".format(shortItemMovingAvg / ONE_MILLION, itemDesc))
+      putString("%2.2f%% complete (approx.)                     ".format(lines.toDouble / total * 100))
+      putString("%s time remaining (approx.)                     ".format(formatTime(((total - lines) / longMovingAvg * 1000).toLong)))
     }
   }
 
@@ -100,12 +100,11 @@ package object Utils {
     if (elapsed == 0) elapsed = 1
     val avgRate:Double = total / elapsed * 1000.0
     val itemAvg:Double = itemCount / elapsed * 1000.0
-    line = stage * 5 - 2
+    line = stage * 4 - 2
     col = 10
-    putString("stage %d (%s) complete. elapsed: %s   ".format(stage, desc, formatTime(elapsed)))
-    putString("%d %s processed, %d %s                   ".format(total, totalDesc, itemCount, itemDesc))
-    putString("%.3fM %s/sec (average); %.3fM %s/sec (average) ".format(avgRate / ONE_MILLION, totalDesc, itemAvg / ONE_MILLION, itemDesc))
-    putString("                                                                      ")
+    putString("stage %d (%s) complete. elapsed: %s                                   ".format(stage, desc, formatTime(elapsed)))
+    putString("%d %s processed, %d %s                                                ".format(total, totalDesc, itemCount, itemDesc))
+    putString("%.3fM %s/sec (average); %.3fM %s/sec (average)                        ".format(avgRate / ONE_MILLION, totalDesc, itemAvg / ONE_MILLION, itemDesc))
     putString("                                                                      ")
   }
 

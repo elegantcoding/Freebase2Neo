@@ -13,15 +13,16 @@ import org.neo4j.graphdb.DynamicLabel
 object Main extends App {
   var logger:Logger = Logger("com.elegantcoding.freebase2neo")
   var idMap:IdMap = new IdMap()
-  val freebaseLabel = DynamicLabel.label("freebase")
+  var freebaseLabel = DynamicLabel.label("freebase")
   var stage:Int = 0
   var totalIds:Int = 0
   var totalLines:Int = 0
+  var dbpath = "target/batchinserter-example"
 
   var freebaseFile = Settings.gzippedNTripleFile
   // TODO make these come from setting
-  val inserter = BatchInserters.inserter(
-    "target/batchinserter-example",
+  var inserter = BatchInserters.inserter(
+    dbpath,
     Map[String,String](
       "neostore.nodestore.db.mapped_memory" -> "1G",
       "neostore.relationshipstore.db.mapped_memory" -> "1G",
