@@ -3,9 +3,9 @@ package com.elegantcoding.freebase2neo
 import java.util.Arrays
 import collection.mutable.BitSet
 
-class IdMap {
+class IdMap(size:Int = 200000000) {
   // TODO make this estimate based on file size?
-  var arr = Array.fill[Long](200000000)(Long.MaxValue)
+  var arr = Array.fill[Long](size)(Long.MaxValue)
   var createdArr = BitSet.empty
   var idx:Int = 0
   var flag = false
@@ -58,7 +58,7 @@ class IdMap {
   def done = {
     Arrays.sort(arr)
     // TODO make this estimate based on file size?
-    val arr2 = Array.fill[Long](200000000)(Long.MaxValue)
+    val arr2 = Array.fill[Long](size)(Long.MaxValue)
     var lastx = Long.MinValue
     var i = 0
     (0 until idx).foreach{x =>

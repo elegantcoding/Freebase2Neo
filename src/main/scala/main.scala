@@ -11,9 +11,15 @@ import collection.JavaConverters._
 import org.neo4j.graphdb.DynamicLabel
 
 object Main extends App {
-  val logger = Logger("com.elegantcoding.freebase2neo")
-  val idMap = new IdMap()
+  var logger:Logger = Logger("com.elegantcoding.freebase2neo")
+  var idMap:IdMap = new IdMap()
   val freebaseLabel = DynamicLabel.label("freebase")
+  var stage:Int = 0
+  var totalIds:Int = 0
+  var totalLines:Int = 0
+
+  var freebaseFile = Settings.gzippedNTripleFile
+  // TODO make these come from setting
   val inserter = BatchInserters.inserter(
     "target/batchinserter-example",
     Map[String,String](
@@ -24,30 +30,48 @@ object Main extends App {
     ).asJava
   )
 
-  getIdsPass
+  countIdsPass(Settings.gzippedNTripleFile)
+  getIdsPass(Settings.gzippedNTripleFile)
   persistIdMap
   createNodes
-  createRelationshipsPass
+  createRelationshipsPass(Settings.gzippedNTripleFile)
 
   inserter.shutdown
   logger.info("done!")
 
-  def getIdsPass = {
-    logger.info("starting pass (collecting machine ids)...")
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile), 65536*16))
+  def countIdsPass(filename:String) = {
+    logger.info("starting stage (counting machine ids)...")
+    stage += 1
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val start = System.currentTimeMillis
+    var totalEstimate = 2624000000l // TODO make this better
+    nti.foreach { triple =>
+      if (triple.predicateString == "<http://rdf.freebase.com/ns/type.type.instance>") {
+        totalIds += 1
+      }
+      totalLines = totalLines + 1
+      Utils.displayProgress(stage, "count machine ids / lines", start, totalEstimate, "lines", totalLines, totalIds, "machine ids")
+    }
+    logger.info("done stage (counting machine ids)...")
+    Utils.displayDone(stage, "count machine ids / lines", start, totalLines, "lines", totalIds, "machine ids")
+  }
+
+  def getIdsPass(filename:String) = {
+    logger.info("starting stage (collecting machine ids)...")
+    stage += 1
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
     var count = 0l
     val start = System.currentTimeMillis
-    val total = 2625000000l
     nti.foreach { triple =>
       if (triple.predicateString == "<http://rdf.freebase.com/ns/type.type.instance>") {
         val mid = Utils.extractId(triple.objectString)
         idMap.put(mid)
       }
       count = count + 1
-      Utils.displayProgress(1, "get machine ids", start, total, "triples", count, idMap.length, "machine ids")
+      Utils.displayProgress(stage, "get machine ids", start, totalLines, "triples", count, idMap.length, "machine ids")
     }
-    logger.info("done pass (collecting machine ids)...")
-    Utils.displayDone(1, "get machine ids", start, count, "triples", idMap.length, "machine ids")
+    logger.info("done stage (collecting machine ids)...")
+    Utils.displayDone(stage, "get machine ids", start, count, "triples", idMap.length, "machine ids")
   }
 
   def persistIdMap = {
@@ -59,21 +83,22 @@ object Main extends App {
 
   def createNodes = {
     logger.info("starting creating the nodes...")
+    stage += 1
     val start = System.currentTimeMillis()
     (0 until idMap.length).foreach { i =>
       inserter.createNode(i, null, freebaseLabel)
-      Utils.displayProgress(2, "create nodes", start, idMap.length, "nodes", i, i, "nodes")
+      Utils.displayProgress(stage, "create nodes", start, idMap.length, "nodes", i, i, "nodes")
     }
-    Utils.displayDone(2, "create nodes", start, idMap.length, "nodes", idMap.length, "nodes")
+    Utils.displayDone(stage, "create nodes", start, idMap.length, "nodes", idMap.length, "nodes")
     logger.info("done creating the nodes...")
   }
 
-  def createRelationshipsPass = {
+  def createRelationshipsPass(filename:String) = {
     logger.info("starting create relationships pass...")
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile), 65536*16))
+    stage += 1
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
     var count = 0l
     var rels = 0l
-    val total = 2625000000l
     val start = System.currentTimeMillis
     nti.foreach { triple =>
       // if subject is an mid
@@ -101,10 +126,10 @@ object Main extends App {
         }
       }
       count = count + 1
-      Utils.displayProgress(3, "create relationships", start, total, "triples", count, rels, "relationships")
+      Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, rels, "relationships")
     }
     logger.info("done third pass...")
-    Utils.displayDone(3, "create relationships", start, count, "triples", rels, "relationships")
+    Utils.displayDone(stage, "create relationships", start, count, "triples", rels, "relationships")
   }
 
   def sanitize(s:String) = {

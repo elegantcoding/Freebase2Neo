@@ -33,7 +33,7 @@ libraryDependencies ++= Seq(
   "org.neo4j" % "neo4j" % "2.1.2",
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
   "com.googlecode.lanterna" % "lanterna" % "2.1.8",
-  "com.elegantcoding" %% "rdf-processor" % "0.4.0"
+  "com.elegantcoding" %% "rdf-processor" % "0.5.0"
 )
 
 fork in Test := true
@@ -51,4 +51,4 @@ instrumentSettings
 
 coverallsSettings
 
-CoverallsKeys.coverallsToken := Some("")
+CoverallsKeys.coverallsToken := Some("QlYKhxhAQsUyt8pYa2XsOKHOdcJGun7TE")
