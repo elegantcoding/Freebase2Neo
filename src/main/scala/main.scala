@@ -1,17 +1,19 @@
 package com.elegantcoding.freebase2neo
 
-import com.elegantcoding.rdfprocessor.NTripleIterable
 import java.util.zip.GZIPInputStream
 import java.io.FileInputStream
-import grizzled.slf4j.Logger
+import collection.JavaConverters._
+
 import org.neo4j.unsafe.batchinsert.BatchInserters
 import org.neo4j.graphdb.DynamicRelationshipType
-
-import collection.JavaConverters._
 import org.neo4j.graphdb.DynamicLabel
+import com.typesafe.scalalogging._
+import com.elegantcoding.rdfprocessor.NTripleIterable
+import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.slf4j.Logger
 
-object Main extends App {
-  var logger:Logger = Logger("com.elegantcoding.freebase2neo")
+object Main extends App with Logging {
+  var logger = Logger(LoggerFactory.getLogger("freebase2neo.main"))
   var idMap:IdMap = new IdMap()
   var freebaseLabel = DynamicLabel.label("freebase")
   var stage:Int = 0
@@ -134,8 +136,8 @@ object Main extends App {
   }
 
   def sanitize(s:String) = {
-    s.replaceAllLiterally(Settings.fbRdfPrefix, "")
-    s.substring(0,s.length-1)
+    val s2 = s.replaceAllLiterally(Settings.fbRdfPrefix, "")
+    s2.substring(0,s2.length-1)
   }
 }
 

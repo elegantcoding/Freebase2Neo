@@ -1,11 +1,9 @@
 package com.elegantcoding.freebase2neo
 
 import com.googlecode.lanterna.TerminalFacade
-import grizzled.slf4j.Logger
 import java.nio.charset.Charset
 
 package object Utils {
-  val logger = Logger("com.elegantcoding.freebase2neo")
   var lastTime = System.currentTimeMillis
   val ONE_MILLION = 1000000l
   var shortMovingAvgs = Seq[Double]()
@@ -112,9 +110,9 @@ package object Utils {
     val curTime = System.currentTimeMillis
     checkForExit
     if (rdfLineCount % (ONE_MILLION * 10L) == 0) {
-      logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
-        "; last 10M: " + formatTime(curTime - lastTime) +
-        "; process elapsed: " + formatTime(curTime - processStartTime))
+     // logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
+     //   "; last 10M: " + formatTime(curTime - lastTime) +
+     //   "; process elapsed: " + formatTime(curTime - processStartTime))
       lastTime = curTime
     }
   }

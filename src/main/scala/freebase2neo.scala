@@ -16,8 +16,6 @@ import com.elegantcoding.rdfprocessor.rdftriple.ValidRdfTriple
 import com.elegantcoding.rdfprocessor.{RdfFileProcessor, RdfCleaner}
 import com.elegantcoding.rdfprocessor.rdftriple.types.RdfTriple
 
-import grizzled.slf4j.Logger
-
 import collection.JavaConverters._
 
 abstract class NeoRdfCleaner extends RdfCleaner {

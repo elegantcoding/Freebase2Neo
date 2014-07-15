@@ -32,7 +32,8 @@ libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % "2.4" % "test",
   "com.typesafe" % "config" % "1.0.2",
   "org.neo4j" % "neo4j" % "2.1.2",
-  "org.clapper" %% "grizzled-slf4j" % "1.0.2",
+  "ch.qos.logback" % "logback-classic" % "1.1.2",
+  "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
   "com.googlecode.lanterna" % "lanterna" % "2.1.8",
   "com.elegantcoding" %% "rdf-processor" % "0.5.0"
 )
