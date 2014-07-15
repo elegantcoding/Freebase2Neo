@@ -17,7 +17,7 @@ import com.elegantcoding.rdfprocessor.{RdfFileProcessor, RdfCleaner}
 import com.elegantcoding.rdfprocessor.rdftriple.types.RdfTriple
 
 import collection.JavaConverters._
-
+/*
 abstract class NeoRdfCleaner extends RdfCleaner {
 
   override val subjectCleaner:CleanerFunction = None
@@ -181,3 +181,4 @@ object freebase2NeoProcessor extends NeoRdfFileProcessor {
 
   override val rdfLineProcessor: RdfLineProcessor = (triple:RdfTriple) => {}
 }
+*/
