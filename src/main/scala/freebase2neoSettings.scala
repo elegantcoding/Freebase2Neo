@@ -7,7 +7,7 @@ import java.util.ArrayList
 
 object Settings {
   val config = ConfigFactory.load(
-                 "rdf2neo",
+                 "freebase2neo",
                  ConfigParseOptions.defaults()
                    .setSyntax(ConfigSyntax.JSON)
                    .setAllowMissing(false),
