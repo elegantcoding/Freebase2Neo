@@ -21,7 +21,7 @@ package object Utils {
 
   def clear = {
     terminal.clearScreen
-    line = 2
+    line = 1
     col = 10
     putString("press ctrl-C to quit")
   }

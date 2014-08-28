@@ -18,7 +18,7 @@ object Main extends App with Logging {
   var freebaseLabel = DynamicLabel.label("freebase")
   var stage:Int = 0
   var totalIds:Int = 0
-  var totalLines:Int = 0
+  var totalLines:Long = 0
   var dbpath = "target/batchinserter-example"
 
   var freebaseFile = Settings.gzippedNTripleFile
@@ -27,9 +27,9 @@ object Main extends App with Logging {
     dbpath,
     Map[String,String](
       "neostore.nodestore.db.mapped_memory" -> "1G",
-      "neostore.relationshipstore.db.mapped_memory" -> "1G",
-      "neostore.propertystore.db.mapped_memory" -> "1G",
-      "neostore.propertystore.db.strings" -> "1G"
+      "neostore.relationshipstore.db.mapped_memory" -> "16G",
+      "neostore.propertystore.db.mapped_memory" -> "16G",
+      "neostore.propertystore.db.strings" -> "16G"
     ).asJava
   )
 
@@ -38,6 +38,7 @@ object Main extends App with Logging {
   persistIdMap
   createNodes
   createRelationshipsPass(Settings.gzippedNTripleFile)
+  createPropertiesPass(Settings.gzippedNTripleFile)
 
   inserter.shutdown
   logger.info("done!")
@@ -131,12 +132,54 @@ object Main extends App with Logging {
       count = count + 1
       Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, rels, "relationships")
     }
-    logger.info("done third pass...")
+    logger.info("done create relationships pass...")
     Utils.displayDone(stage, "create relationships", start, count, "triples", rels, "relationships")
+  }
+
+  def createPropertiesPass(filename:String) = {
+    logger.info("starting create properties pass...")
+    stage += 1
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    var count = 0l
+    var props = 0l
+    val start = System.currentTimeMillis
+    nti.foreach { triple =>
+    // if subject is an mid
+      if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
+        val mid = Utils.extractId(triple.subjectString)
+        val nodeId: Long = idMap.get(mid)
+        if (nodeId >= 0) {
+          // if predicate isn't ignored
+          if (!Settings.ignorePredicates.contains(triple.predicateString)) {
+            // if object is an mid (this is a relationship)
+            if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
+              // do nothing
+            } else {
+              // create property
+              val key = sanitize(triple.predicateString)
+              if(key.startsWith("common.") && !triple.objectString.contains("<http://") && (!triple.objectString.contains("\"@") || triple.objectString.endsWith("\"@en"))) {
+                //logger.info((key -> triple.objectString).toString)
+                inserter.setNodeProperties(nodeId, Map[String, java.lang.Object](key -> triple.objectString).asJava)
+                props += 1
+              }
+            }
+          }
+        } else {
+          // TODO handle labels?
+        }
+      }
+      count = count + 1
+      Utils.displayProgress(stage, "create properties", start, totalLines, "triples", count, props, "properties")
+    }
+    logger.info("done create properties pass...")
+    Utils.displayDone(stage, "create properties", start, count, "triples", props, "properties")
   }
 
   def sanitize(s:String) = {
     val s2 = s.replaceAllLiterally(Settings.fbRdfPrefix, "")
+      .replaceAllLiterally("<http://www.w3.org/1999/02/", "")
+      .replaceAllLiterally("<http://www.w3.org/2000/01/", "")
+      .replaceAllLiterally("<http://rdf.freebase.com/key/", "")
     s2.substring(0,s2.length-1)
   }
 }

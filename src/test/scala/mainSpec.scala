@@ -95,4 +95,34 @@ class mainSpec extends FlatSpec with ShouldMatchers {
     db.shutdown
   }
 
+  it should "be able to create properties" in {
+    Main.dbpath = "target/testdb"
+    Main.inserter = BatchInserters.inserter(
+      Main.dbpath,
+      Map[String,String](
+        "neostore.nodestore.db.mapped_memory" -> "64M",
+        "neostore.relationshipstore.db.mapped_memory" -> "128M",
+        "neostore.propertystore.db.mapped_memory" -> "128M",
+        "neostore.propertystore.db.strings" -> "128M"
+      ).asJava
+    )
+    Main.freebaseLabel = DynamicLabel.label("Freebase")
+    Main.createPropertiesPass("subset.ntriple.gz")
+    Main.inserter.shutdown
+    // confirm nodes are created (check one high and low)
+    val db = new GraphDatabaseFactory().newEmbeddedDatabase(Main.dbpath)
+    val tx = db.beginTx
+    try {
+      val n = db.getNodeById(4l) // Apache HTTP Server
+      //println("test: "+ n.getProperty("common.topic.description"))
+      n.getProperty("common.topic.description").asInstanceOf[String].startsWith("\"The Apache HTTP Server, commonly referred to as Apache") should be(true)
+      tx.success
+    } catch {
+      case t:Throwable => fail(t)
+    } finally {
+      tx.close
+    }
+    db.shutdown
+  }
+
 }
