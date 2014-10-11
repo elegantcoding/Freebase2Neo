@@ -19,16 +19,11 @@ class mainSpec extends FlatSpec with ShouldMatchers {
     Main.totalLines should be (8764511)
   }
 
-  it should "be able extract an id" in {
-    val obj = "<http://rdf.freebase.com/ns/m.05ljt>"
-    Main.extractId(obj) should be(1)
-  }
-
   it should "be able to get the ids" in {
     Main.idMap = new IdMap(21054)
     Main.getIdsPass("subset.ntriple.gz")
     Main.persistIdMap
-    Main.idMap.getMid("5ljtx") should be (1431)
+    Main.idMap.getMid("05ljtx") should be (1431)
   }
 
   it should "be able to create the nodes" in {
@@ -120,7 +115,6 @@ class mainSpec extends FlatSpec with ShouldMatchers {
     try {
       val n = db.getNodeById(4l) // Apache HTTP Server
       //println("test: "+ n.getProperty("common.topic.description"))
-      println(n.getPropertyKeys.asScala.mkString(";"))
       n.getProperty("common.topic.description").asInstanceOf[String].startsWith("\"The Apache HTTP Server, commonly referred to as Apache") should be(true)
       tx.success
     } catch {

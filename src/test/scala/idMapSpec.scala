@@ -46,4 +46,21 @@ class idMapSpec extends FlatSpec with ShouldMatchers {
     idMap.get(321) should equal(1)
   }
 
+  it should "be able to mark as created" in {
+    val idMap = new IdMap(10)
+    idMap.put(321)
+    idMap.put(123)
+    idMap.put(123)
+    idMap.done
+    idMap.length should equal(2)
+    idMap.get(123) should equal(0)
+    idMap.get(321) should equal(1)
+    idMap.createdArr.add(idMap.get(123))
+    idMap.getCreated(123) should equal(true)
+    idMap.getCreated(321) should equal(false)
+    idMap.setCreated(321)
+    idMap.getCreated(321) should equal(true)
+
+  }
+
 }

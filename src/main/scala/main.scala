@@ -21,11 +21,8 @@ object Main extends App with Logging {
   var totalLines:Long = 0
   var dbpath = "target/batchinserter-example"
 
-  // TODO research implications of 0 at the end (version?)
-  val idPrefix = "<http://rdf.freebase.com/ns/m."
-
   var freebaseFile = Settings.gzippedNTripleFile
-  // TODO make these come from settings
+  // TODO make these come from setting
   var inserter = BatchInserters.inserter(
     dbpath,
     Map[String,String](
@@ -71,8 +68,7 @@ object Main extends App with Logging {
     val start = System.currentTimeMillis
     nti.foreach { triple =>
       if (triple.predicateString == "<http://rdf.freebase.com/ns/type.type.instance>") {
-        println(triple.objectString)
-        idMap.put(extractId(triple.objectString))
+        idMap.put(Utils.extractId(triple.objectString))
       }
       count = count + 1
       Utils.displayProgress(stage, "get machine ids", start, totalLines, "triples", count, idMap.length, "machine ids")
@@ -109,15 +105,15 @@ object Main extends App with Logging {
     val start = System.currentTimeMillis
     nti.foreach { triple =>
       // if subject is an mid
-      if (triple.subjectString.startsWith(idPrefix)) {
-        val mid = extractId(triple.subjectString)
+      if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
+        val mid = Utils.extractId(triple.subjectString)
         val nodeId:Long = idMap.get(mid)
         if (nodeId >= 0) {
           // if predicate isn't ignored
           if (!Settings.ignorePredicates.contains(triple.predicateString)) {
             // if object is an mid (this is a relationship)
-            if (triple.objectString.startsWith(idPrefix)) {
-              val objMid = extractId(triple.objectString)
+            if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
+              val objMid = Utils.extractId(triple.objectString)
               val objNodeId:Long = idMap.get(objMid)
               if (objNodeId >= 0) {
                 // create relationship
@@ -148,14 +144,14 @@ object Main extends App with Logging {
     val start = System.currentTimeMillis
     nti.foreach { triple =>
     // if subject is an mid
-      if (triple.subjectString.startsWith(idPrefix)) {
-        val mid = extractId(triple.subjectString)
+      if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
+        val mid = Utils.extractId(triple.subjectString)
         val nodeId: Long = idMap.get(mid)
         if (nodeId >= 0) {
           // if predicate isn't ignored
           if (!Settings.ignorePredicates.contains(triple.predicateString)) {
             // if object is an mid (this is a relationship)
-            if (triple.objectString.startsWith(idPrefix)) {
+            if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
               // do nothing
             } else {
               // create property
@@ -184,11 +180,6 @@ object Main extends App with Logging {
       .replaceAllLiterally("<http://www.w3.org/2000/01/", "")
       .replaceAllLiterally("<http://rdf.freebase.com/key/", "")
     s2.substring(0,s2.length-1)
-  }
-
-  val idStart = idPrefix.length
-  def extractId(str:String):Long = {
-    mid2long.encode(str.substring(idStart, str.length()-1))
   }
 }
 
