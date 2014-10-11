@@ -1,4 +1,4 @@
-import com.elegantcoding.freebase2neo.{IdMap, Main}
+import com.elegantcoding.freebase2neo.{Utils, IdMap, Main}
 
 import org.apache.commons.io.FileUtils
 import org.neo4j.graphdb.DynamicLabel
@@ -15,8 +15,13 @@ class mainSpec extends FlatSpec with ShouldMatchers {
   "main" should "be able to count the ids" in {
     Main.logger = Logger(LoggerFactory.getLogger("freebase2neo.mainSpec"))
     Main.countIdsPass("subset.ntriple.gz")
-    Main.totalIds should be (21054)
-    Main.totalLines should be (8764511)
+    Main.totalIds should be (21007)
+    Main.totalLines should be (8731903)
+  }
+
+  it should "be able extract an id" in {
+    val obj = "<http://rdf.freebase.com/ns/m.05ljt>"
+    Utils.extractId(obj) should be(182809)
   }
 
   it should "be able to get the ids" in {
@@ -47,6 +52,8 @@ class mainSpec extends FlatSpec with ShouldMatchers {
     try {
       val n = db.getNodeById(0l)
       val n2 = db.getNodeById(8000l)
+      val apache = db.getNodeById(4l)
+      apache.getProperty("mid") should be("_h2")
       tx.success
     } catch {
       case t:Throwable => fail(t)

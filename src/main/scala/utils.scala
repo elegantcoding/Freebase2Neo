@@ -65,7 +65,7 @@ package object Utils {
       val avgRate:Double = lines / elapsed * 1000.0
       var elapsedAvg = curTime - lastAvgTime
       if (elapsedAvg == 0) elapsedAvg = 1
-      val secondAvg:Double = (lines - lastAvgLines) / elapsedAvg * 1000.0
+      val secondAvg:Double = math.max(0.0, lines - lastAvgLines / elapsedAvg * 1000.0)
       lastAvgLines = lines
       lastAvgTime = System.currentTimeMillis
       var shortMovingAvg:Double = latestShortMovingAvg(secondAvg)

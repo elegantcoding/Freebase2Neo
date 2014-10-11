@@ -89,7 +89,7 @@ object Main extends App with Logging {
     stage += 1
     val start = System.currentTimeMillis()
     (0 until idMap.length).foreach { i =>
-      inserter.createNode(i, null, freebaseLabel)
+      inserter.createNode(i, Map[String,java.lang.Object]("mid" -> mid2long.decode(idMap.arr(i))).asJava, freebaseLabel)
       Utils.displayProgress(stage, "create nodes", start, idMap.length, "nodes", i, i, "nodes")
     }
     Utils.displayDone(stage, "create nodes", start, idMap.length, "nodes", idMap.length, "nodes")
@@ -121,7 +121,7 @@ object Main extends App with Logging {
                 rels += 1
               }
             } else {
-              // TODO handle properties?
+              // properties are handled in the next pass
             }
           }
         } else {
@@ -156,9 +156,23 @@ object Main extends App with Logging {
             } else {
               // create property
               val key = sanitize(triple.predicateString)
-              if(key.startsWith("common.") && !triple.objectString.contains("<http://") && (!triple.objectString.contains("\"@") || triple.objectString.endsWith("\"@en"))) {
-                //logger.info((key -> triple.objectString).toString)
-                inserter.setNodeProperties(nodeId, Map[String, java.lang.Object](key -> triple.objectString).asJava)
+              if(!triple.objectString.contains("<http://") && (!triple.objectString.contains("\"@") || triple.objectString.endsWith("\"@en"))) {
+                // if property exists, convert it to an array of properties
+                // if it's already an array, append to the array
+                if (inserter.nodeHasProperty(nodeId, key)) {
+                  var prop = inserter.getNodeProperties(nodeId).get(key)
+                  inserter.removeNodeProperty(nodeId, key)
+                  prop match {
+                    case prop: Array[String] => {
+                      inserter.setNodeProperty(nodeId, key, prop :+ triple.objectString)
+                    }
+                    case _ => {
+                      inserter.setNodeProperty(nodeId, key, Array[String](prop.toString) :+ triple.objectString)
+                    }
+                  }
+                } else {
+                  inserter.setNodeProperty(nodeId, key, triple.objectString)
+                }
                 props += 1
               }
             }
