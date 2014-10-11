@@ -4,7 +4,6 @@ import java.util.Arrays
 import collection.mutable.BitSet
 
 class IdMap(size:Int = 200000000) {
-  // TODO make this estimate based on file size?
   var arr = Array.fill[Long](size)(Long.MaxValue)
   var createdArr = BitSet.empty
   var idx:Int = 0

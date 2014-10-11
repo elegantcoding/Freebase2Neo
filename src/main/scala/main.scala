@@ -35,7 +35,7 @@ object Main extends App with Logging {
 
   countIdsPass(Settings.gzippedNTripleFile)
   getIdsPass(Settings.gzippedNTripleFile)
-  persistIdMap
+  //persistIdMap
   createNodes
   createRelationshipsPass(Settings.gzippedNTripleFile)
   createPropertiesPass(Settings.gzippedNTripleFile)
@@ -48,7 +48,7 @@ object Main extends App with Logging {
     stage += 1
     val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
     val start = System.currentTimeMillis
-    var totalEstimate = 2624000000l // TODO make this better
+    var totalEstimate = 2624000000l // TODO make this better based on file size?
     nti.foreach { triple =>
       if (triple.predicateString == "<http://rdf.freebase.com/ns/type.type.instance>") {
         totalIds += 1
@@ -68,8 +68,7 @@ object Main extends App with Logging {
     val start = System.currentTimeMillis
     nti.foreach { triple =>
       if (triple.predicateString == "<http://rdf.freebase.com/ns/type.type.instance>") {
-        val mid = Utils.extractId(triple.objectString)
-        idMap.put(mid)
+        idMap.put(Utils.extractId(triple.objectString))
       }
       count = count + 1
       Utils.displayProgress(stage, "get machine ids", start, totalLines, "triples", count, idMap.length, "machine ids")
@@ -108,14 +107,14 @@ object Main extends App with Logging {
       // if subject is an mid
       if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
         val mid = Utils.extractId(triple.subjectString)
-        val nodeId: Long = idMap.get(mid)
+        val nodeId:Long = idMap.get(mid)
         if (nodeId >= 0) {
           // if predicate isn't ignored
           if (!Settings.ignorePredicates.contains(triple.predicateString)) {
             // if object is an mid (this is a relationship)
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
               val objMid = Utils.extractId(triple.objectString)
-              val objNodeId: Long = idMap.get(objMid)
+              val objNodeId:Long = idMap.get(objMid)
               if (objNodeId >= 0) {
                 // create relationship
                 inserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
