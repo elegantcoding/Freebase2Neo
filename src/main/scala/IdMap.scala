@@ -5,7 +5,6 @@ import collection.mutable.BitSet
 
 class IdMap(size:Int = 200000000) {
   var arr = Array.fill[Long](size)(Long.MaxValue)
-  var createdArr = BitSet.empty
   var idx:Int = 0
   var flag = false
 
@@ -19,24 +18,6 @@ class IdMap(size:Int = 200000000) {
 
   def getMid(mid:String) = {
     get(mid2long.encode(mid))
-  }
-
-  def setCreatedMid(mid:String) = {
-    setCreated(mid2long.encode(mid))
-  }
-
-  def setCreated(id:Long) = {
-    val i = get(id)
-    createdArr.add(i)
-  }
-
-  def getCreatedMid(mid:String) = {
-    getCreated(mid2long.encode(mid))
-  }
-
-  def getCreated(id:Long) = {
-    val i = get(id)
-    createdArr(i)
   }
 
   def put(mid:Long) = {
@@ -69,7 +50,6 @@ class IdMap(size:Int = 200000000) {
     }
     idx = 0
 
-    createdArr = BitSet(i)
     arr = Array.fill[Long](i)(Long.MaxValue)
 
     (0 until i).foreach{x =>

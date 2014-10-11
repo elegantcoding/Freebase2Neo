@@ -131,11 +131,5 @@ package object Utils {
     str.foreach(c => terminal.putCharacter(c))
   }
 
-  val idStart = "<http://rdf.freebase.com/ns/m.".length
-  def extractId(str:String):Long = {
-    // println(str + " ==> " + str.substring(idStart, str.length()-1))
-    mid2long.encode(str.substring(idStart, str.length()-1))
-  }
-
   def cleanupTerminal = terminal.exitPrivateMode()
 }
