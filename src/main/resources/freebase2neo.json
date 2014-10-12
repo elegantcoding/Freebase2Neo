@@ -5,12 +5,41 @@
   "statusLogFile" : "/Users/wfreeman/Freebase2Neo/statusLog.txt",
   "nodeTypeSubjects": ["math"],
   "nodeTypeSubjectsConjunctive":[["computer", "science"]],
-  "nodeTypePredicates": ["type.type.instance"],
+  "nodeTypePredicates": ["<http://rdf.freebase.com/ns/type.type.instance>"],
   "ignoreSubjects":[],
-  "ignorePredicates":["<http://rdf.freebase.com/ns/type.type.instance>", "<http://rdf.freebase.com/ns/type.object.type>"],
+  "allowPredicates":[
+    "<http://rdf.freebase.com/key/wikipedia.en>"
+    ],
+  "allowObjectPrefix":[
+    "<http://en.wikipedia"
+    ],
+  "allowObjectSuffix":[
+    "\"@en"
+    ],
+  "ignorePredicates":[
+    "<http://rdf.freebase.com/ns/type.object.type>",
+    "<http://rdf.freebase.com/ns/type.object.key>"
+    ],
+  "ignorePredicatePrefixes":[
+    "22-rdf-syntax-ns#type",
+    "<http://rdf.freebase.com/ns/user.",
+    "<http://rdf.freebase.com/key/wikipedia"
+     ],
+  "ignoreSubjectPrefixes":[
+    "<http://rdf.freebase.com/ns/g.",
+    "<http://rdf.freebase.com/ns/user."
+    ],
   "ignoreObjects":[],
-  "ignorePredicatePrefixes":[],
-  "ignoreSubjectPrefixes":[],
-  "ignoreObjectPrefixes":[],
+  "ignoreObjectPrefixes":[
+    "type.object.key",
+    "user.",
+    "22-rdf-syntax-ns#type",
+    "<http://rdf.freebase.com/ns/g.",
+    "<http://rdf.freebase.com/ns/user."
+    ],
+  "ignoreObjectContains":[
+    "\"@",
+    "wikipedia"
+    ],
   "fbRdfPrefix":"<http://rdf.freebase.com/ns/"
 }

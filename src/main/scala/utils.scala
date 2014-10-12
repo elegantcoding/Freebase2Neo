@@ -6,12 +6,10 @@ import java.nio.charset.Charset
 package object Utils {
   var lastTime = System.currentTimeMillis
   val ONE_MILLION = 1000000l
-  var shortMovingAvgs = Seq[Double]()
-  var longMovingAvgs = Seq[Double]()
-  var shortItemMovingAvgs = Seq[Double]()
+  var shortMovingAvgs = Seq[(Long,Long)]()
+  var longMovingAvgs = Seq[(Long,Long)]()
+  var shortItemMovingAvgs = Seq[(Long,Long)]()
   var lastAvgTime = System.currentTimeMillis
-  var lastAvgLines = 1000l
-  var lastAvgItems = 1000l
   var line = 2
   var col = 10
   val terminal = TerminalFacade.createTerminal(Charset.forName("UTF8"))
@@ -26,55 +24,61 @@ package object Utils {
     putString("press ctrl-C to quit")
   }
 
-  def formatTime(elapsedTime: Long) = {
+  def formatTime(elapsedTime:Long) = {
     "%02d:%02d:%02d".format(
       (elapsedTime / 1000) / 3600,
       ((elapsedTime / 1000) / 60) % 60,
       (elapsedTime / 1000) % 60)
   }
 
-  def latestShortMovingAvg(avgKRate:Double):Double = {
-    shortMovingAvgs ++= Seq(avgKRate)
-    while (shortMovingAvgs.size > 10) {
+  def latestShortMovingAvg(current:Long, elapsed:Long):Double = {
+    shortMovingAvgs ++= Seq((current,elapsed))
+    while (shortMovingAvgs.head._2 < elapsed - (10 * 1000)) {
       shortMovingAvgs = shortMovingAvgs.tail
     }
-    shortMovingAvgs.reduce(_ + _) / shortMovingAvgs.size.toDouble
+    if(elapsed == shortMovingAvgs.head._2) {
+      0.0
+    } else {
+      (current - shortMovingAvgs.head._1) / (elapsed - shortMovingAvgs.head._2) * 1000.0
+    }
   }
 
-  def latestLongMovingAvg(avgKRate:Double):Double = {
-    longMovingAvgs ++= Seq(avgKRate)
-    while (longMovingAvgs.size > 10 * 60) {
+  def latestLongMovingAvg(current:Long, elapsed:Long):Double = {
+    longMovingAvgs ++= Seq((current, elapsed))
+    while (longMovingAvgs.head._2 < elapsed - (10 * 60 * 1000)) {
       longMovingAvgs = longMovingAvgs.tail
     }
-    longMovingAvgs.reduce(_ + _) / longMovingAvgs.size.toDouble
+    if (elapsed == longMovingAvgs.head._2) {
+      0.0
+    } else {
+      (current - longMovingAvgs.head._1) / (elapsed - longMovingAvgs.head._2) * 1000.0
+    }
   }
 
-  def latestItemShortMovingAvg(avgKRate:Double):Double = {
-    shortItemMovingAvgs ++= Seq(avgKRate)
-    while (shortItemMovingAvgs.size > 10) {
+  def latestItemShortMovingAvg(current:Long, elapsed:Long):Double = {
+    shortItemMovingAvgs ++= Seq((current, elapsed))
+    while (shortItemMovingAvgs.head._2 < elapsed - (10 * 1000)) {
       shortItemMovingAvgs = shortItemMovingAvgs.tail
     }
-    shortItemMovingAvgs.reduce(_ + _) / shortItemMovingAvgs.size.toDouble
+    if (elapsed == longMovingAvgs.head._2) {
+      0.0
+    } else {
+      (current - shortItemMovingAvgs.head._1) / (elapsed - shortItemMovingAvgs.head._2) * 1000.0
+    }
   }
 
   def displayProgress(stage:Int, desc:String, startTime: Long, total:Long, totalDesc:String, lines: Long, itemCount:Long, itemDesc:String) = {
     val curTime = System.currentTimeMillis
     if (curTime - 1000 > lastAvgTime) {
+      lastAvgTime = curTime
       var elapsed = curTime - startTime
       if (elapsed == 0) elapsed = 1
       val avgRate:Double = lines / elapsed * 1000.0
-      var elapsedAvg = curTime - lastAvgTime
-      if (elapsedAvg == 0) elapsedAvg = 1
-      val secondAvg:Double = math.max(0.0, lines - lastAvgLines / elapsedAvg * 1000.0)
-      lastAvgLines = lines
-      lastAvgTime = System.currentTimeMillis
-      var shortMovingAvg:Double = latestShortMovingAvg(secondAvg)
+      var shortMovingAvg:Double = latestShortMovingAvg(lines, elapsed)
       if (shortMovingAvg == 0) shortMovingAvg = 1
-      var longMovingAvg:Double = latestLongMovingAvg(secondAvg)
+      var longMovingAvg:Double = latestLongMovingAvg(lines,elapsed)
       if (longMovingAvg == 0) longMovingAvg = 1
-      val secondItemAvg:Double = (itemCount - lastAvgItems) / elapsedAvg * 1000.0
-      lastAvgItems = itemCount
-      var shortItemMovingAvg:Double = latestItemShortMovingAvg(secondItemAvg)
+      var shortItemMovingAvg:Double = latestItemShortMovingAvg(itemCount, elapsed)
       if (shortItemMovingAvg == 0) shortItemMovingAvg = 1
       logStatus(startTime, lines)
       line = stage * 4 - 2
@@ -104,6 +108,9 @@ package object Utils {
     putString("%d %s processed, %d %s                                                ".format(total, totalDesc, itemCount, itemDesc))
     putString("%.3fM %s/sec (average); %.3fM %s/sec (average)                        ".format(avgRate / ONE_MILLION, totalDesc, itemAvg / ONE_MILLION, itemDesc))
     putString("                                                                      ")
+    shortMovingAvgs = Seq[(Long,Long)]()
+    longMovingAvgs = Seq[(Long,Long)]()
+    shortItemMovingAvgs = Seq[(Long,Long)]()
   }
 
   def logStatus(processStartTime: Long, rdfLineCount: Long) = {
