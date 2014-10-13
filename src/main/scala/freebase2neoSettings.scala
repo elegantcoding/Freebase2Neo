@@ -1,5 +1,7 @@
 package com.elegantcoding.freebase2neo
 
+import com.elegantcoding.rdfprocessor.rdftriple.types.RdfTriple
+
 import collection.JavaConverters._
 import com.typesafe.config._
 
@@ -19,159 +21,91 @@ object Settings {
   val gzippedNTripleFile = config.getString("gzippedNTripleFile")
   val errorLogFile = config.getString("errorLogFile")
   val statusLogFile = config.getString("statusLogFile")
-  val nodeTypePredicates = config.getList("nodeTypePredicates").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
+  val nodeTypePredicates = getConfigList("nodeTypePredicates")
+
+  def startsWithAny(s:String, l:Seq[String]):Boolean = {
+    l.foreach(v => if(s.startsWith(v)) {return true})
+    return false
+  }
+
+  def endsWithAny(s:String, l:Seq[String]):Boolean = {
+    l.foreach(v => if(s.endsWith(v)) {return true})
+    return false
+  }
+
+  def containsAny(s:String, l:Seq[String]):Boolean = {
+    l.foreach(v => if(s.contains(v)) {return true})
+    return false
+  }
+
 
   case class RdfFilterSetting(
-    startsWith:Seq[String] = Seq[String](),
-    endsWith:Seq[String] = Seq[String](),
-    contains:Seq[String] = Seq[String](),
-    equals:Seq[String] = Seq[String]()
+    startsWithSeq : Seq[String] = Seq[String](),
+    endsWithSeq : Seq[String] = Seq[String](),
+    containsSeq : Seq[String] = Seq[String](),
+    equalsSeq : Seq[String] = Seq[String]()
   )
   case class RdfFilter(
-    whitelist:RdfFilterSetting = RdfFilterSetting(),
-    blacklist:RdfFilterSetting = RdfFilterSetting()
+    whitelist : RdfFilterSetting = RdfFilterSetting(),
+    blacklist : RdfFilterSetting = RdfFilterSetting()
   )
-  case class Filters(subj:RdfFilter, pred:RdfFilter, obj:RdfFilter)
+
+  case class Filters(subject : RdfFilter, predicate : RdfFilter, obj:RdfFilter) {
+
+      def matchRdf(rdfTriple : RdfTriple) : Boolean = {
+        true
+      }
+  }
+
+
+  def getConfigList(configString : String)  = {
+    try {
+      config.getList(configString).unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
+    } catch {
+      case ex : Exception => Seq[String]()
+    }
+  }
 
   val filters = Filters(
-    subj = RdfFilter(
+    subject = RdfFilter(
       whitelist = RdfFilterSetting(
-        startsWith = try {
-          config.getList("filters.subject.whitelist.startsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        endsWith = try {
-          config.getList("filters.subject.whitelist.endsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        contains = try {
-          config.getList("filters.subject.whitelist.contains").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        equals = try {
-          config.getList("filters.subject.whitelist.equals").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        }
-      ),
+        startsWithSeq = getConfigList("filters.subject.whitelist.startsWith"),
+        endsWithSeq = getConfigList("filters.subject.whitelist.endsWith"),
+        containsSeq = getConfigList("filters.subject.whitelist.contains"),
+        equalsSeq = getConfigList("filters.subject.whitelist.equals")),
       blacklist = RdfFilterSetting(
-        startsWith = try {
-          config.getList("filters.subject.blacklist.startsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        endsWith = try {
-          config.getList("filters.subject.blacklist.endsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        contains = try {
-          config.getList("filters.subject.blacklist.contains").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        equals = try {
-          config.getList("filters.subject.blacklist.equals").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        }
-      )
+        startsWithSeq = getConfigList("filters.subject.blacklist.startsWith"),
+        endsWithSeq = getConfigList("filters.subject.blacklist.endsWith"),
+        containsSeq = getConfigList("filters.subject.blacklist.contains"),
+        equalsSeq = getConfigList("filters.subject.blacklist.equals"))
     ),
-    pred = RdfFilter(
+    predicate = RdfFilter(
       whitelist = RdfFilterSetting(
-        startsWith = try {
-          config.getList("filters.predicate.whitelist.startsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        endsWith = try {
-          config.getList("filters.predicate.whitelist.endsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        contains = try {
-          config.getList("filters.predicate.whitelist.contains").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        equals = try {
-          config.getList("filters.predicate.whitelist.equals").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        }
+        startsWithSeq = getConfigList("filters.predicate.whitelist.startsWith"),
+        endsWithSeq = getConfigList("filters.predicate.whitelist.endsWith"),
+        containsSeq = getConfigList("filters.predicate.whitelist.contains"),
+        equalsSeq = getConfigList("filters.predicate.whitelist.equals")
       ),
       blacklist = RdfFilterSetting(
-        startsWith = try {
-          config.getList("filters.predicate.blacklist.startsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        endsWith = try {
-          config.getList("filters.predicate.blacklist.endsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        contains = try {
-          config.getList("filters.predicate.blacklist.contains").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        equals = try {
-          config.getList("filters.predicate.blacklist.equals").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        }
+        startsWithSeq = getConfigList("filters.predicate.blacklist.startsWith"),
+        endsWithSeq = getConfigList("filters.predicate.blacklist.endsWith"),
+        containsSeq = getConfigList("filters.predicate.blacklist.contains"),
+        equalsSeq = getConfigList("filters.predicate.blacklist.equals")
       )
     ),
     obj = RdfFilter(
       whitelist = RdfFilterSetting(
-        startsWith = try {
-          config.getList("filters.object.whitelist.startsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        endsWith = try {
-          config.getList("filters.object.whitelist.endsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        contains = try {
-          config.getList("filters.object.whitelist.contains").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        equals = try {
-          config.getList("filters.object.whitelist.equals").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        }
+        startsWithSeq = getConfigList("filters.object.whitelist.startsWith"),
+        endsWithSeq = getConfigList("filters.object.whitelist.endsWith"),
+        containsSeq = getConfigList("filters.object.whitelist.contains"),
+        equalsSeq = getConfigList("filters.object.whitelist.equals")
       ),
       blacklist = RdfFilterSetting(
-        startsWith = try {
-          config.getList("filters.object.blacklist.startsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        endsWith = try {
-          config.getList("filters.object.blacklist.endsWith").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        contains = try {
-          config.getList("filters.object.blacklist.contains").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        },
-        equals = try {
-          config.getList("filters.object.blacklist.equals").unwrapped.asScala.toSeq.map(_.asInstanceOf[String])
-        } catch {
-          case ex:Exception => Seq[String]()
-        }
+        startsWithSeq = getConfigList("filters.object.blacklist.startsWith"),
+        endsWithSeq = getConfigList("filters.object.blacklist.endsWith"),
+        containsSeq = getConfigList("filters.object.blacklist.contains"),
+        equalsSeq = getConfigList("filters.object.blacklist.equals")
       )
     )
   )
-
 }

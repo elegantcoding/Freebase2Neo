@@ -20,6 +20,7 @@ object Main extends App with Logging {
   var totalIds:Int = 0
   var totalLines:Long = 0
   var dbpath = Settings.outputGraphPath
+  //var MID_PREFIX = "<http://rdf.freebase.com/ns/m."
 
   var freebaseFile = Settings.gzippedNTripleFile
   // TODO make these come from setting
@@ -101,7 +102,7 @@ object Main extends App with Logging {
     stage += 1
     val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
     var count = 0l
-    var rels = 0l
+    var relationshipCount = 0l
     val start = System.currentTimeMillis
     nti.foreach {
       triple =>
@@ -113,22 +114,22 @@ object Main extends App with Logging {
             // if object is an mid (this is a relationship) and
             // if predicate isn't ignored
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.") &&
-              !Settings.filters.pred.blacklist.equals.contains(triple.predicateString)) {
+              !Settings.filters.predicate.blacklist.equalsSeq.contains(triple.predicateString)) {
               val objMid = Utils.extractId(triple.objectString)
               val objNodeId: Long = idMap.get(objMid)
               if (objNodeId >= 0) {
                 // create relationship
                 inserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
-                rels += 1
+                relationshipCount += 1
               }
             }
           }
         }
         count = count + 1
-        Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, rels, "relationships")
+        Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, relationshipCount, "relationships")
     }
     logger.info("done create relationships pass...")
-    Utils.displayDone(stage, "create relationships", start, count, "triples", rels, "relationships")
+    Utils.displayDone(stage, "create relationships", start, count, "triples", relationshipCount, "relationships")
   }
 
   def createPropertiesPass(filename:String) = {
@@ -136,7 +137,7 @@ object Main extends App with Logging {
     stage += 1
     val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
     var count = 0l
-    var props = 0l
+    var propertyCount = 0l
     val start = System.currentTimeMillis
     nti.foreach { triple =>
     // if subject is an mid
@@ -145,15 +146,15 @@ object Main extends App with Logging {
         val nodeId: Long = idMap.get(mid)
         if (nodeId >= 0) {
           // if predicate isn't ignored
-          if (!Settings.filters.pred.blacklist.equals.contains(triple.predicateString)) {
+          if (!Settings.filters.predicate.blacklist.equalsSeq.contains(triple.predicateString)) {
             // if object is an mid (this is a relationship)
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
               // do nothing
             } else {
               // create property
               val key = sanitize(triple.predicateString)
-              if((Settings.filters.pred.whitelist.equals.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.filters.pred.blacklist.startsWith)) &&
-                 (endsWithAny(triple.objectString, Settings.filters.obj.whitelist.endsWith) || startsWithAny(triple.objectString, Settings.filters.obj.whitelist.startsWith) || (!startsWithAny(triple.objectString, Settings.filters.obj.blacklist.startsWith) && !containsAny(triple.objectString, Settings.filters.obj.blacklist.contains)))
+              if((Settings.filters.predicate.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.filters.predicate.blacklist.startsWithSeq)) &&
+                 (endsWithAny(triple.objectString, Settings.filters.obj.whitelist.endsWithSeq) || startsWithAny(triple.objectString, Settings.filters.obj.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, Settings.filters.obj.blacklist.startsWithSeq) && !containsAny(triple.objectString, Settings.filters.obj.blacklist.containsSeq)))
                 ) {
                 // if property exists, convert it to an array of properties
                 // if it's already an array, append to the array
@@ -171,7 +172,7 @@ object Main extends App with Logging {
                 } else {
                   inserter.setNodeProperty(nodeId, key, triple.objectString)
                 }
-                props += 1
+                propertyCount += 1
               }
             }
           }
@@ -180,10 +181,10 @@ object Main extends App with Logging {
         }
       }
       count = count + 1
-      Utils.displayProgress(stage, "create properties", start, totalLines, "triples", count, props, "properties")
+      Utils.displayProgress(stage, "create properties", start, totalLines, "triples", count, propertyCount, "properties")
     }
     logger.info("done create properties pass...")
-    Utils.displayDone(stage, "create properties", start, count, "triples", props, "properties")
+    Utils.displayDone(stage, "create properties", start, count, "triples", propertyCount, "properties")
   }
 
   def sanitize(s:String) = {

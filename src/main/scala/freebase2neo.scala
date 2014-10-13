@@ -1,184 +1,230 @@
 package com.elegantcoding.freebase2neo
-
+/*
 ////match (n:freebase) return n
 //
 ////https://groups.google.com/forum/#!msg/freebase-discuss/AG5sl7K5KBE/iR7p-YfTNsUJ
 ////-XX:CMSInitiatingOccupancyFraction=<percent>
 //http://docs.neo4j.org/chunked/stable/configuration-io-examples.html#configuration-batchinsert
 
-import java.io.{BufferedReader, InputStreamReader, FileInputStream}
 import java.util.zip.GZIPInputStream
-import org.neo4j.graphdb.{DynamicRelationshipType, DynamicLabel}
-import org.neo4j.unsafe.batchinsert.BatchInserters
-
-import com.elegantcoding.rdfprocessor.types.{RdfLineProcessor, CleanerFunction}
-import com.elegantcoding.rdfprocessor.rdftriple.ValidRdfTriple
-import com.elegantcoding.rdfprocessor.{RdfFileProcessor, RdfCleaner}
-import com.elegantcoding.rdfprocessor.rdftriple.types.RdfTriple
-
+import java.io.FileInputStream
 import collection.JavaConverters._
-/*
-abstract class NeoRdfCleaner extends RdfCleaner {
 
-  override val subjectCleaner:CleanerFunction = None
-  override val predicateCleaner:CleanerFunction = None
-  override val objectCleaner:CleanerFunction = None
+import org.neo4j.unsafe.batchinsert.BatchInserters
+import org.neo4j.graphdb.DynamicRelationshipType
+import org.neo4j.graphdb.DynamicLabel
+import com.typesafe.scalalogging.Logging
+import com.elegantcoding.rdfprocessor.NTripleIterable
+import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.slf4j.Logger
 
-  def sanitize = Option((string: String) => {
-    NeoRdfCleaner.sanitizeRegex.replaceAllIn(string, "_")
-  })
-
+object Freebase2NeoProcessor {
+  def apply() = new Freebase2NeoProcessor()
 }
 
-object NeoRdfCleaner {
-  val sanitizeRegex = """[^A-Za-z0-9]""".r
-  val objectTrimmerRegex = """^\"|\"$""".r
-}
+class Freebase2NeoProcessor extends Logging {
 
-import NeoRdfCleaner._
+  var logger = Logger(LoggerFactory.getLogger("freebase2NeoProcessor"))
+  var idMap:IdMap = new IdMap()
+  var freebaseLabel = DynamicLabel.label("freebase")
+  var stage:Int = 0
+  var totalIds:Int = 0
+  var totalLines:Long = 0
+  var dbPath = Settings.outputGraphPath
+  val MID_PREFIX : String = "<http://rdf.freebase.com/ns/m."
 
-object processForIdsRdfCleaner extends NeoRdfCleaner {
-  override val subjectCleaner = sanitize
-  override val predicateCleaner = None
-  override val objectCleaner = None
-}
+  var freebaseFile = Settings.gzippedNTripleFile
+  // TODO make these come from setting
+  var inserter = BatchInserters.inserter(
+    dbPath,
+    Map[String,String](
+      "neostore.nodestore.db.mapped_memory" -> "1G",
+      "neostore.relationshipstore.db.mapped_memory" -> "16G",
+      "neostore.propertystore.db.mapped_memory" -> "16G",
+      "neostore.propertystore.db.strings" -> "16G"
+    ).asJava
+  )
 
-object processBuildRelationshipsRdfCleaner extends NeoRdfCleaner {
-  override val subjectCleaner = None
-  override val predicateCleaner = sanitize
-  override val objectCleaner = None
-}
+  def createDb = {
+    countIdsPass(Settings.gzippedNTripleFile)
+    getIdsPass(Settings.gzippedNTripleFile)
+    persistIdMap
+    createNodes
+    createRelationshipsPass(Settings.gzippedNTripleFile)
+    createPropertiesPass(Settings.gzippedNTripleFile)
 
-abstract class NeoRdfFileProcessor extends RdfFileProcessor {
-  //override val rdfCleaner = emptyRdfCleaner
-
-  override def validateRdfTriple(subject: String, predicate: String, obj: String): RdfTriple = {
-    ValidRdfTriple(subject, predicate, obj)
-  }
-}
-
-object freebase2NeoProcessor extends NeoRdfFileProcessor {
-
-  val neoFlag = true
-  val processName = "freebase2neo"
-  val inserter = BatchInserters.inserter(Settings.outputGraphPath);
-
-  val idMap = new IdMap()
-
-  var instanceCount = 0L
-
-  def getProcessFiles = {
-    Seq(
-      processForIds,
-      processBuildRelationships
-    )
+    inserter.shutdown
+    logger.info("done!")
   }
 
-  def getRdfStream: BufferedReader = {
-    new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile))))
-  }
 
-  def handleInvalidTriple(rdfTriple: RdfTriple, tripleString: String) = {}
-
-  object processForIds extends RdfFileProcessor {
-
-    def getRdfStream: BufferedReader = {
-      new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile))))
+  def countIdsPass(filename:String) = {
+    logger.info("starting stage (counting machine ids)...")
+    stage += 1
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val start = System.currentTimeMillis
+    var totalEstimate = 2624000000l // TODO make this better based on file size?
+    nti.foreach { triple =>
+      if (Settings.nodeTypePredicates.contains(triple.predicateString)) {
+        totalIds += 1
+      }
+      totalLines = totalLines + 1
+      Utils.displayProgress(stage, "count machine ids / lines", start, totalEstimate, "lines", totalLines, totalIds, "machine ids")
     }
-
-    //override val rdfCleaner = processForIdsRdfCleaner
-
-    val processName = "processForIds"
-
-    override val rdfLineProcessor:RdfLineProcessor = (rdfTriple: RdfTriple) => {
-
-      //writeToStatusLog("setting label: " + tripleString)
-      /*if(!idMap.containsMid(rdfTriple.objectString)) {
-          idMap.putMid(rdfTriple.objectString)
-
-          if(neoFlag) {
-              inserter.createNode(instanceCount, Map[String,Object]("mid" -> rdfTriple.objectString).asJava, DynamicLabel.label("freebase"))
-          }
-      }*/
-
-      /*if(neoFlag) {
-          var curLabels = inserter.getNodeLabels(instanceCount).asScala.toArray
-          curLabels = curLabels :+ DynamicLabel.label(rdfTriple.subjectString)
-          inserter.setNodeLabels(instanceCount, curLabels : _*) // the _* is for varargs
-      }*/
-    }
+    logger.info("done stage (counting machine ids)...")
+    Utils.displayDone(stage, "count machine ids / lines", start, totalLines, "lines", totalIds, "machine ids")
   }
 
-
-  object processBuildRelationships extends RdfFileProcessor {
-
-    def getRdfStream: BufferedReader = {
-      new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(Settings.gzippedNTripleFile))))
+  def getIdsPass(filename:String) = {
+    logger.info("starting stage (collecting machine ids)...")
+    stage += 1
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    var count = 0l
+    val start = System.currentTimeMillis
+    nti.foreach { triple =>
+      if (Settings.nodeTypePredicates.contains(triple.predicateString)) {
+        idMap.put(Utils.extractId(triple.objectString))
+      }
+      count = count + 1
+      Utils.displayProgress(stage, "get machine ids", start, totalLines, "triples", count, idMap.length, "machine ids")
     }
+    logger.info("done stage (collecting machine ids)...")
+    Utils.displayDone(stage, "get machine ids", start, count, "triples", idMap.length, "machine ids")
+  }
 
-    override val rdfCleaner:RdfCleaner = processBuildRelationshipsRdfCleaner
+  def persistIdMap = {
+    logger.info("starting persisting the id map...")
+    idMap.done // sorts id map, etc.
+    // TODO persistIdMap
+    logger.info("done persisting the id map...")
+  }
 
-    val processName = "processBuildRelationships"
+  def createNodes = {
+    logger.info("starting creating the nodes...")
+    stage += 1
+    val start = System.currentTimeMillis()
+    (0 until idMap.length).foreach { i =>
+      inserter.createNode(i, Map[String,java.lang.Object]("mid" -> mid2long.decode(idMap.arr(i))).asJava, freebaseLabel)
+      Utils.displayProgress(stage, "create nodes", start, idMap.length, "nodes", i, i, "nodes")
+    }
+    Utils.displayDone(stage, "create nodes", start, idMap.length, "nodes", idMap.length, "nodes")
+    logger.info("done creating the nodes...")
+  }
 
-    val rdfLineProcessor:RdfLineProcessor = (rdfTriple: RdfTriple) => {
+  def createRelationshipsPass(filename:String) = {
+    logger.info("starting create relationships pass...")
+    stage += 1
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    var count = 0l
+    var relationshipCount = 0l
+    val start = System.currentTimeMillis
+    nti.foreach {
+      triple =>
+        // if subject is an mid
 
-      if (idMap.containsMid(rdfTriple.subjectString)) {
-        // this is a property/relationship of a node
-        val subjectId = idMap.getMid(rdfTriple.subjectString)
-
-        if (idMap.containsMid(rdfTriple.objectString)) {
-          // this is a relationship
-          //writeToStatusLog("creating relationship: " + tripleString)
-          val objId = idMap.getMid(rdfTriple.objectString)
-
-          if (neoFlag) {
-            inserter.createRelationship(subjectId, objId, DynamicRelationshipType.withName(rdfTriple.predicateString), null)
-          }
-
-        } else {
-          // this is a real property
-          //writeToStatusLog("setting property: " + tripleString)
-
-          if (rdfTriple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
-            //logRdfError(MissingIdRdfError("dropping relationship on the ground for an id we don't have:"), tripleString, rdfTriple)
-
-          } else {
-
-            val trimmedObj = objectTrimmerRegex.replaceAllIn(rdfTriple.objectString, "")
-
-            if ((trimmedObj.length > 3 && trimmedObj.substring(trimmedObj.length - 3)(0) != '.' || trimmedObj.endsWith(".en")) &&
-              (rdfTriple.predicateString.length > 3 && rdfTriple.predicateString.substring(rdfTriple.predicateString.length - 3)(0) != '_' || rdfTriple.predicateString.endsWith("_en"))) {
-
-              if (neoFlag) {
-
-                if (inserter.nodeHasProperty(subjectId, rdfTriple.predicateString)) {
-                  //logRdfError(PropertyExistsRdfError("already has prop: " + subjectId + "; rdfTriple.predicate: " + rdfTriple.predicateString), tripleString, rdfTriple)
-
-                  var prop = inserter.getNodeProperties(subjectId).get(rdfTriple.predicateString)
-                  inserter.removeNodeProperty(subjectId, rdfTriple.predicateString)
-                  //writeToStatusLog("got node property: " + subjectId + ":" + rdfTriple.predicateString + "; prop: " + prop)
-                  prop match {
-                    case prop: Array[String] => {
-                      //writeToStatusLog("prop array detected...");
-                      inserter.setNodeProperty(subjectId, rdfTriple.predicateString, prop :+ trimmedObj)
-                    }
-                    case _ => {
-                      //writeToStatusLog("converting prop to array...");
-                      inserter.setNodeProperty(subjectId, rdfTriple.predicateString, Array[String](prop.toString) :+ trimmedObj)
-                    }
-                  }
-                } else {
-                  inserter.setNodeProperty(subjectId, rdfTriple.predicateString, trimmedObj)
-                }
+        if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
+          val mid = Utils.extractId(triple.subjectString)
+          val nodeId: Long = idMap.get(mid)
+          if (nodeId >= 0) {
+            // if object is an mid (this is a relationship) and
+            // if predicate isn't ignored
+            if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.") &&
+              !Settings.filters.predicate.blacklist.equalsSeq.contains(triple.predicateString)) {
+              val objMid = Utils.extractId(triple.objectString)
+              val objNodeId: Long = idMap.get(objMid)
+              if (objNodeId >= 0) {
+                // create relationship
+                inserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
+                relationshipCount += 1
               }
             }
           }
         }
-      }
-
+        count = count + 1
+        Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, relationshipCount, "relationships")
     }
+    logger.info("done create relationships pass...")
+    Utils.displayDone(stage, "create relationships", start, count, "triples", relationshipCount, "relationships")
   }
 
-  override val rdfLineProcessor: RdfLineProcessor = (triple:RdfTriple) => {}
+  def createPropertiesPass(filename:String) = {
+    logger.info("starting create properties pass...")
+    stage += 1
+    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    var count = 0l
+    var propertyCount = 0l
+    val start = System.currentTimeMillis
+    nti.foreach { triple =>
+      // if subject is an mid
+      if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
+        val mid = Utils.extractId(triple.subjectString)
+        val nodeId: Long = idMap.get(mid)
+        if (nodeId >= 0) {
+          // if predicate isn't ignored
+          if (!Settings.filters.predicate.blacklist.equalsSeq.contains(triple.predicateString)) {
+            // if object is an mid (this is a relationship)
+            if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
+              // do nothing
+            } else {
+              // create property
+              val key = sanitize(triple.predicateString)
+              if((Settings.filters.predicate.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.filters.predicate.blacklist.startsWithSeq)) &&
+                (endsWithAny(triple.objectString, Settings.filters.obj.whitelist.endsWithSeq) || startsWithAny(triple.objectString, Settings.filters.obj.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, Settings.filters.obj.blacklist.startsWithSeq) && !containsAny(triple.objectString, Settings.filters.obj.blacklist.containsSeq)))
+              ) {
+                // if property exists, convert it to an array of properties
+                // if it's already an array, append to the array
+                if (inserter.nodeHasProperty(nodeId, key)) {
+                  var prop = inserter.getNodeProperties(nodeId).get(key)
+                  inserter.removeNodeProperty(nodeId, key)
+                  prop match {
+                    case prop: Array[String] => {
+                      inserter.setNodeProperty(nodeId, key, prop :+ triple.objectString)
+                    }
+                    case _ => {
+                      inserter.setNodeProperty(nodeId, key, Array[String](prop.toString) :+ triple.objectString)
+                    }
+                  }
+                } else {
+                  inserter.setNodeProperty(nodeId, key, triple.objectString)
+                }
+                propertyCount += 1
+              }
+            }
+          }
+        } else {
+          // TODO handle labels?
+        }
+      }
+      count = count + 1
+      Utils.displayProgress(stage, "create properties", start, totalLines, "triples", count, propertyCount, "properties")
+    }
+    logger.info("done create properties pass...")
+    Utils.displayDone(stage, "create properties", start, count, "triples", propertyCount, "properties")
+  }
+
+  def sanitize(s:String) = {
+    val s2 = s.replaceAllLiterally(Settings.freebaseRdfPrefix, "")
+      .replaceAllLiterally("<http://www.w3.org/1999/02/", "")
+      .replaceAllLiterally("<http://www.w3.org/2000/01/", "")
+      .replaceAllLiterally("<http://rdf.freebase.com/key/", "")
+    s2.substring(0,s2.length-1)
+  }
+
+  def startsWithAny(s:String, l:Seq[String]):Boolean = {
+    l.foreach(v => if(s.startsWith(v)) {return true})
+    return false
+  }
+
+  def endsWithAny(s:String, l:Seq[String]):Boolean = {
+    l.foreach(v => if(s.endsWith(v)) {return true})
+    return false
+  }
+
+  def containsAny(s:String, l:Seq[String]):Boolean = {
+    l.foreach(v => if(s.contains(v)) {return true})
+    return false
+  }
+
 }
+
 */
