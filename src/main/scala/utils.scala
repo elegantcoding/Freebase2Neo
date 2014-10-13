@@ -6,9 +6,9 @@ import java.nio.charset.Charset
 package object Utils {
   var lastTime = System.currentTimeMillis
   val ONE_MILLION = 1000000l
-  var shortMovingAvgs = Seq[(Long,Long)]()
-  var longMovingAvgs = Seq[(Long,Long)]()
-  var shortItemMovingAvgs = Seq[(Long,Long)]()
+  var shortMovingAvgs = Seq[(Long,Long)]((0,0))
+  var longMovingAvgs = Seq[(Long,Long)]((0,0))
+  var shortItemMovingAvgs = Seq[(Long,Long)]((0,0))
   var lastAvgTime = System.currentTimeMillis
   var line = 2
   var col = 10
@@ -108,9 +108,9 @@ package object Utils {
     putString("%d %s processed, %d %s                                                ".format(total, totalDesc, itemCount, itemDesc))
     putString("%.3fM %s/sec (average); %.3fM %s/sec (average)                        ".format(avgRate / ONE_MILLION, totalDesc, itemAvg / ONE_MILLION, itemDesc))
     putString("                                                                      ")
-    shortMovingAvgs = Seq[(Long,Long)]()
-    longMovingAvgs = Seq[(Long,Long)]()
-    shortItemMovingAvgs = Seq[(Long,Long)]()
+    shortMovingAvgs = Seq[(Long,Long)]((0,0))
+    longMovingAvgs = Seq[(Long,Long)]((0,0))
+    shortItemMovingAvgs = Seq[(Long,Long)]((0,0))
   }
 
   def logStatus(processStartTime: Long, rdfLineCount: Long) = {

@@ -35,7 +35,7 @@ object Main extends App with Logging {
 
   countIdsPass(Settings.gzippedNTripleFile)
   getIdsPass(Settings.gzippedNTripleFile)
-  //persistIdMap
+  persistIdMap
   createNodes
   createRelationshipsPass(Settings.gzippedNTripleFile)
   createPropertiesPass(Settings.gzippedNTripleFile)

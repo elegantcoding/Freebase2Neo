@@ -1,0 +1,53 @@
+{
+  "outputGraphPath":"testdb/",
+  "gzippedNTripleFile":"subset.ntriple.gz",
+  "errorLogFile" : "errorLog.txt",
+  "statusLogFile" : "statusLog.txt",
+  "freebaseRdfPrefix":"<http://rdf.freebase.com/ns/",
+  "nodeTypePredicates": ["<http://rdf.freebase.com/ns/type.type.instance>"],
+  "filters": {
+    "subject": {
+      "whitelist":{},
+      "blacklist": {
+        "startsWith":[
+          "<http://rdf.freebase.com/ns/g.",
+          "<http://rdf.freebase.com/ns/user."
+        ]
+      }
+    },
+    "predicate": {
+      "whitelist": {
+        "equals":["<http://rdf.freebase.com/key/wikipedia.en>"]
+      },
+      "blacklist": {
+        "equals":[
+          "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+          "<http://www.w3.org/2000/01/rdf-schema#label>",
+          "<http://rdf.freebase.com/ns/type.object.type>",
+          "<http://rdf.freebase.com/ns/type.object.key>"
+        ],
+        "startsWith":[
+          "<http://rdf.freebase.com/ns/user.",
+          "<http://rdf.freebase.com/key/wikipedia",
+          "<http://rdf.freebase.com/key/user."
+        ]
+      }
+    },
+    "object": {
+      "whitelist": {
+        "startsWith":["<http://en.wikipedia"],
+        "endsWith":["\"@en"]
+      },
+      "blacklist": {
+        "startsWith":[
+          "<http://rdf.freebase.com/ns/g.",
+          "<http://rdf.freebase.com/ns/user."
+        ],
+        "contains":[
+              "\"@",
+              "wikipedia"
+        ]
+      }
+    }
+  }
+}
