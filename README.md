@@ -6,4 +6,4 @@
 A Freebase dump file importer to Neo4j, using the BatchInserter API.
 
 ## Experimental
-This is currently not ready for prime time.
+This is currently not ready for prime time. It is getting closer, though...
