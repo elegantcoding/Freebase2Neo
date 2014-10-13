@@ -19,7 +19,7 @@ object Main extends App with Logging {
   var stage:Int = 0
   var totalIds:Int = 0
   var totalLines:Long = 0
-  var dbpath = "target/batchinserter-example"
+  var dbpath = Settings.outputGraphPath
 
   var freebaseFile = Settings.gzippedNTripleFile
   // TODO make these come from setting
@@ -113,7 +113,7 @@ object Main extends App with Logging {
             // if object is an mid (this is a relationship) and
             // if predicate isn't ignored
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.") &&
-              !Settings.ignorePredicates.contains(triple.predicateString)) {
+              !Settings.filters.pred.blacklist.equals.contains(triple.predicateString)) {
               val objMid = Utils.extractId(triple.objectString)
               val objNodeId: Long = idMap.get(objMid)
               if (objNodeId >= 0) {
@@ -145,19 +145,16 @@ object Main extends App with Logging {
         val nodeId: Long = idMap.get(mid)
         if (nodeId >= 0) {
           // if predicate isn't ignored
-          if (!Settings.ignorePredicates.contains(triple.predicateString)) {
+          if (!Settings.filters.pred.blacklist.equals.contains(triple.predicateString)) {
             // if object is an mid (this is a relationship)
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
               // do nothing
             } else {
               // create property
               val key = sanitize(triple.predicateString)
-              if((Settings.allowPredicates.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.ignorePredicatePrefixes)) &&
-                 (startsWithAny(triple.objectString, Settings.allowObjectPrefix) || !startsWithAny(triple.objectString, Settings.ignoreObjectPrefixes)) &&
-                 (!triple.objectString.startsWith("<http://rdf.freebase.com/ns/user.")) &&
-                 (!triple.objectString.contains("\"@") || triple.objectString.endsWith("\"@en")) &&
-                 (!key.startsWith("wikipedia") || key.startsWith("wikipedia.en")) &&
-                 (!triple.objectString.contains("wikipedia") || triple.objectString.startsWith("<http://en.wikipedia"))) {
+              if((Settings.filters.pred.whitelist.equals.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.filters.pred.blacklist.startsWith)) &&
+                 (endsWithAny(triple.objectString, Settings.filters.obj.whitelist.endsWith) || startsWithAny(triple.objectString, Settings.filters.obj.whitelist.startsWith) || (!startsWithAny(triple.objectString, Settings.filters.obj.blacklist.startsWith) && !containsAny(triple.objectString, Settings.filters.obj.blacklist.contains)))
+                ) {
                 // if property exists, convert it to an array of properties
                 // if it's already an array, append to the array
                 if (inserter.nodeHasProperty(nodeId, key)) {
@@ -190,7 +187,7 @@ object Main extends App with Logging {
   }
 
   def sanitize(s:String) = {
-    val s2 = s.replaceAllLiterally(Settings.fbRdfPrefix, "")
+    val s2 = s.replaceAllLiterally(Settings.freebaseRdfPrefix, "")
       .replaceAllLiterally("<http://www.w3.org/1999/02/", "")
       .replaceAllLiterally("<http://www.w3.org/2000/01/", "")
       .replaceAllLiterally("<http://rdf.freebase.com/key/", "")
@@ -199,6 +196,16 @@ object Main extends App with Logging {
 
   def startsWithAny(s:String, l:Seq[String]):Boolean = {
     l.foreach(v => if(s.startsWith(v)) {return true})
+    return false
+  }
+
+  def endsWithAny(s:String, l:Seq[String]):Boolean = {
+    l.foreach(v => if(s.endsWith(v)) {return true})
+    return false
+  }
+
+  def containsAny(s:String, l:Seq[String]):Boolean = {
+    l.foreach(v => if(s.contains(v)) {return true})
     return false
   }
 }

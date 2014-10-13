@@ -1,45 +1,53 @@
 {
-  "outputGraphPath":"/Users/wfreeman/Freebase2Neo/rdf2neo-test/",
-  "gzippedNTripleFile":"/Users/wfreeman/Freebase2Neo/subset.ntriple.gz",
-  "errorLogFile" : "/Users/wfreeman/Freebase2Neo/errorLog.txt",
-  "statusLogFile" : "/Users/wfreeman/Freebase2Neo/statusLog.txt",
-  "nodeTypeSubjects": ["math"],
-  "nodeTypeSubjectsConjunctive":[["computer", "science"]],
+  "outputGraphPath":"testdb/",
+  "gzippedNTripleFile":"subset.ntriple.gz",
+  "errorLogFile" : "errorLog.txt",
+  "statusLogFile" : "statusLog.txt",
+  "freebaseRdfPrefix":"<http://rdf.freebase.com/ns/",
   "nodeTypePredicates": ["<http://rdf.freebase.com/ns/type.type.instance>"],
-  "ignoreSubjects":[],
-  "allowPredicates":[
-    "<http://rdf.freebase.com/key/wikipedia.en>"
-    ],
-  "allowObjectPrefix":[
-    "<http://en.wikipedia"
-    ],
-  "allowObjectSuffix":[
-    "\"@en"
-    ],
-  "ignorePredicates":[
-    "<http://rdf.freebase.com/ns/type.object.type>",
-    "<http://rdf.freebase.com/ns/type.object.key>"
-    ],
-  "ignorePredicatePrefixes":[
-    "22-rdf-syntax-ns#type",
-    "<http://rdf.freebase.com/ns/user.",
-    "<http://rdf.freebase.com/key/wikipedia"
-     ],
-  "ignoreSubjectPrefixes":[
-    "<http://rdf.freebase.com/ns/g.",
-    "<http://rdf.freebase.com/ns/user."
-    ],
-  "ignoreObjects":[],
-  "ignoreObjectPrefixes":[
-    "type.object.key",
-    "user.",
-    "22-rdf-syntax-ns#type",
-    "<http://rdf.freebase.com/ns/g.",
-    "<http://rdf.freebase.com/ns/user."
-    ],
-  "ignoreObjectContains":[
-    "\"@",
-    "wikipedia"
-    ],
-  "fbRdfPrefix":"<http://rdf.freebase.com/ns/"
+  "filters": {
+    "subject": {
+      "whitelist":{},
+      "blacklist": {
+        "startsWith":[
+          "<http://rdf.freebase.com/ns/g.",
+          "<http://rdf.freebase.com/ns/user."
+        ]
+      }
+    },
+    "predicate": {
+      "whitelist": {
+        "equals":["<http://rdf.freebase.com/key/wikipedia.en>"]
+      },
+      "blacklist": {
+        "equals":[
+          "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+          "<http://www.w3.org/2000/01/rdf-schema#label>",
+          "<http://rdf.freebase.com/ns/type.object.type>",
+          "<http://rdf.freebase.com/ns/type.object.key>"
+        ],
+        "startsWith":[
+          "<http://rdf.freebase.com/ns/user.",
+          "<http://rdf.freebase.com/key/wikipedia",
+          "<http://rdf.freebase.com/key/user."
+        ]
+      }
+    },
+    "object": {
+      "whitelist": {
+        "startsWith":["<http://en.wikipedia"],
+        "endsWith":["\"@en"]
+      },
+      "blacklist": {
+        "startsWith":[
+          "<http://rdf.freebase.com/ns/g.",
+          "<http://rdf.freebase.com/ns/user."
+        ],
+        "contains":[
+              "\"@",
+              "wikipedia"
+        ]
+      }
+    }
+  }
 }
