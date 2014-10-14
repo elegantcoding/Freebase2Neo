@@ -44,13 +44,16 @@ object Main extends App with Logging {
   inserter.shutdown
   logger.info("done!")
 
+  //TODO add 65536*16 to Settings
+  def getRdfIterable(filename : String) = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+
   def countIdsPass(filename:String) = {
     logger.info("starting stage (counting machine ids)...")
     stage += 1
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val rdfIterable = getRdfIterable(filename)
     val start = System.currentTimeMillis
     var totalEstimate = 2624000000l // TODO make this better based on file size?
-    nti.foreach { triple =>
+    rdfIterable.foreach { triple =>
       if (Settings.nodeTypePredicates.contains(triple.predicateString)) {
         totalIds += 1
       }
@@ -64,10 +67,10 @@ object Main extends App with Logging {
   def getIdsPass(filename:String) = {
     logger.info("starting stage (collecting machine ids)...")
     stage += 1
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val rdfIterable = getRdfIterable(filename)
     var count = 0l
     val start = System.currentTimeMillis
-    nti.foreach { triple =>
+    rdfIterable.foreach { triple =>
       if (Settings.nodeTypePredicates.contains(triple.predicateString)) {
         idMap.put(Utils.extractId(triple.objectString))
       }
@@ -100,11 +103,11 @@ object Main extends App with Logging {
   def createRelationshipsPass(filename:String) = {
     logger.info("starting create relationships pass...")
     stage += 1
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val rdfIterable = getRdfIterable(filename)
     var count = 0l
     var relationshipCount = 0l
     val start = System.currentTimeMillis
-    nti.foreach {
+    rdfIterable.foreach {
       triple =>
       // if subject is an mid
         if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
@@ -135,11 +138,11 @@ object Main extends App with Logging {
   def createPropertiesPass(filename:String) = {
     logger.info("starting create properties pass...")
     stage += 1
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val rdfIterable = getRdfIterable(filename)
     var count = 0l
     var propertyCount = 0l
     val start = System.currentTimeMillis
-    nti.foreach { triple =>
+    rdfIterable.foreach { triple =>
     // if subject is an mid
       if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
         val mid = Utils.extractId(triple.subjectString)
