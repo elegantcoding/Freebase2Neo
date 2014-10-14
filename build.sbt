@@ -17,7 +17,7 @@ test in assembly := {}
 
 name := "freebase2neo"
 
-version := "0.2.0"
+version := "0.3.0"
 
 organization := "org.anormcypher"
 

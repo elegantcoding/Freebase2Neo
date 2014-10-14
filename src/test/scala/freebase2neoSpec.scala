@@ -1,4 +1,4 @@
-import com.elegantcoding.freebase2neo.{Utils, IdMap, Main}
+import com.elegantcoding.freebase2neo.{Freebase2Neo, Utils, IdMap, Main}
 
 import org.apache.commons.io.FileUtils
 import org.neo4j.graphdb.DynamicLabel
@@ -10,13 +10,13 @@ import java.io.File
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.slf4j.Logger
 
-class mainSpec extends FlatSpec with ShouldMatchers {
+class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
   "main" should "be able to count the ids" in {
-    Main.logger = Logger(LoggerFactory.getLogger("freebase2neo.mainSpec"))
-    Main.countIdsPass("subset.ntriple.gz")
-    Main.totalIds should be (21007)
-    Main.totalLines should be (8731903)
+    Freebase2Neo.logger = Logger(LoggerFactory.getLogger("freebase2neo.mainSpec"))
+    Freebase2Neo.countIdsPass("subset.ntriple.gz")
+    Freebase2Neo.totalIds should be (21007)
+    Freebase2Neo.totalLines should be (8731903)
   }
 
   it should "be able extract an id" in {
@@ -25,17 +25,17 @@ class mainSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "be able to get the ids" in {
-    Main.idMap = new IdMap(21054)
-    Main.getIdsPass("subset.ntriple.gz")
-    Main.persistIdMap
-    Main.idMap.getMid("05ljtx") should be (1431)
+    Freebase2Neo.idMap = new IdMap(21054)
+    Freebase2Neo.getIdsPass("subset.ntriple.gz")
+    Freebase2Neo.persistIdMap
+    Freebase2Neo.idMap.getMid("05ljtx") should be (1431)
   }
 
   it should "be able to create the nodes" in {
-    Main.dbpath = "target/testdb"
-    FileUtils.deleteDirectory(new File(Main.dbpath))
-    Main.inserter = BatchInserters.inserter(
-      Main.dbpath,
+    Freebase2Neo.dbpath = "target/testdb"
+    FileUtils.deleteDirectory(new File(Freebase2Neo.dbpath))
+    Freebase2Neo.inserter = BatchInserters.inserter(
+      Freebase2Neo.dbpath,
       Map[String,String](
         "neostore.nodestore.db.mapped_memory" -> "64M",
         "neostore.relationshipstore.db.mapped_memory" -> "128M",
@@ -43,11 +43,11 @@ class mainSpec extends FlatSpec with ShouldMatchers {
         "neostore.propertystore.db.strings" -> "128M"
       ).asJava
     )
-    Main.freebaseLabel = DynamicLabel.label("Freebase")
-    Main.createNodes
-    Main.inserter.shutdown
+    Freebase2Neo.freebaseLabel = DynamicLabel.label("Freebase")
+    Freebase2Neo.createNodes
+    Freebase2Neo.inserter.shutdown
     // confirm nodes are created (check one high and low)
-    val db = new GraphDatabaseFactory().newEmbeddedDatabase(Main.dbpath)
+    val db = new GraphDatabaseFactory().newEmbeddedDatabase(Freebase2Neo.dbpath)
     val tx = db.beginTx
     try {
       val n = db.getNodeById(0l)
@@ -64,10 +64,10 @@ class mainSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "be able to create the relationships" in {
-    Main.dbpath = "target/testdb"
+    Freebase2Neo.dbpath = "target/testdb"
     //FileUtils.deleteDirectory(new File(Main.dbpath))
-    Main.inserter = BatchInserters.inserter(
-      Main.dbpath,
+    Freebase2Neo.inserter = BatchInserters.inserter(
+      Freebase2Neo.dbpath,
       Map[String,String](
         "neostore.nodestore.db.mapped_memory" -> "64M",
         "neostore.relationshipstore.db.mapped_memory" -> "128M",
@@ -75,11 +75,11 @@ class mainSpec extends FlatSpec with ShouldMatchers {
         "neostore.propertystore.db.strings" -> "128M"
       ).asJava
     )
-    Main.freebaseLabel = DynamicLabel.label("Freebase")
-    Main.createRelationshipsPass("subset.ntriple.gz")
-    Main.inserter.shutdown
+    Freebase2Neo.freebaseLabel = DynamicLabel.label("Freebase")
+    Freebase2Neo.createRelationshipsPass("subset.ntriple.gz")
+    Freebase2Neo.inserter.shutdown
     // confirm nodes are created (check one high and low)
-    val db = new GraphDatabaseFactory().newEmbeddedDatabase(Main.dbpath)
+    val db = new GraphDatabaseFactory().newEmbeddedDatabase(Freebase2Neo.dbpath)
     val tx = db.beginTx
     var found = false
     try {
@@ -103,9 +103,9 @@ class mainSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "be able to create properties" in {
-    Main.dbpath = "target/testdb"
-    Main.inserter = BatchInserters.inserter(
-      Main.dbpath,
+    Freebase2Neo.dbpath = "target/testdb"
+    Freebase2Neo.inserter = BatchInserters.inserter(
+      Freebase2Neo.dbpath,
       Map[String,String](
         "neostore.nodestore.db.mapped_memory" -> "64M",
         "neostore.relationshipstore.db.mapped_memory" -> "128M",
@@ -113,11 +113,11 @@ class mainSpec extends FlatSpec with ShouldMatchers {
         "neostore.propertystore.db.strings" -> "128M"
       ).asJava
     )
-    Main.freebaseLabel = DynamicLabel.label("Freebase")
-    Main.createPropertiesPass("subset.ntriple.gz")
-    Main.inserter.shutdown
+    Freebase2Neo.freebaseLabel = DynamicLabel.label("Freebase")
+    Freebase2Neo.createPropertiesPass("subset.ntriple.gz")
+    Freebase2Neo.inserter.shutdown
     // confirm nodes are created (check one high and low)
-    val db = new GraphDatabaseFactory().newEmbeddedDatabase(Main.dbpath)
+    val db = new GraphDatabaseFactory().newEmbeddedDatabase(Freebase2Neo.dbpath)
     val tx = db.beginTx
     try {
       val n = db.getNodeById(4l) // Apache HTTP Server

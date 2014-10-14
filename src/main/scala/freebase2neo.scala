@@ -1,10 +1,4 @@
 package com.elegantcoding.freebase2neo
-/*
-////match (n:freebase) return n
-//
-////https://groups.google.com/forum/#!msg/freebase-discuss/AG5sl7K5KBE/iR7p-YfTNsUJ
-////-XX:CMSInitiatingOccupancyFraction=<percent>
-//http://docs.neo4j.org/chunked/stable/configuration-io-examples.html#configuration-batchinsert
 
 import java.util.zip.GZIPInputStream
 import java.io.FileInputStream
@@ -13,30 +7,24 @@ import collection.JavaConverters._
 import org.neo4j.unsafe.batchinsert.BatchInserters
 import org.neo4j.graphdb.DynamicRelationshipType
 import org.neo4j.graphdb.DynamicLabel
-import com.typesafe.scalalogging.Logging
 import com.elegantcoding.rdfprocessor.NTripleIterable
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.slf4j.Logger
 
-object Freebase2NeoProcessor {
-  def apply() = new Freebase2NeoProcessor()
-}
-
-class Freebase2NeoProcessor extends Logging {
-
-  var logger = Logger(LoggerFactory.getLogger("freebase2NeoProcessor"))
+object Freebase2Neo {
+  var logger = Logger(LoggerFactory.getLogger("freebase2neo"))
   var idMap:IdMap = new IdMap()
-  var freebaseLabel = DynamicLabel.label("freebase")
+  var freebaseLabel = DynamicLabel.label("Freebase")
   var stage:Int = 0
   var totalIds:Int = 0
   var totalLines:Long = 0
-  var dbPath = Settings.outputGraphPath
-  val MID_PREFIX : String = "<http://rdf.freebase.com/ns/m."
+  var dbpath = Settings.outputGraphPath
+  val MID_PREFIX = "<http://rdf.freebase.com/ns/m."
 
   var freebaseFile = Settings.gzippedNTripleFile
   // TODO make these come from setting
   var inserter = BatchInserters.inserter(
-    dbPath,
+    dbpath,
     Map[String,String](
       "neostore.nodestore.db.mapped_memory" -> "1G",
       "neostore.relationshipstore.db.mapped_memory" -> "16G",
@@ -45,26 +33,17 @@ class Freebase2NeoProcessor extends Logging {
     ).asJava
   )
 
-  def createDb = {
-    countIdsPass(Settings.gzippedNTripleFile)
-    getIdsPass(Settings.gzippedNTripleFile)
-    persistIdMap
-    createNodes
-    createRelationshipsPass(Settings.gzippedNTripleFile)
-    createPropertiesPass(Settings.gzippedNTripleFile)
 
-    inserter.shutdown
-    logger.info("done!")
-  }
-
+  //TODO add 65536*16 to Settings
+  def getRdfIterable(filename : String) = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
 
   def countIdsPass(filename:String) = {
     logger.info("starting stage (counting machine ids)...")
     stage += 1
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val rdfIterable = getRdfIterable(filename)
     val start = System.currentTimeMillis
     var totalEstimate = 2624000000l // TODO make this better based on file size?
-    nti.foreach { triple =>
+    rdfIterable.foreach { triple =>
       if (Settings.nodeTypePredicates.contains(triple.predicateString)) {
         totalIds += 1
       }
@@ -78,10 +57,10 @@ class Freebase2NeoProcessor extends Logging {
   def getIdsPass(filename:String) = {
     logger.info("starting stage (collecting machine ids)...")
     stage += 1
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val rdfIterable = getRdfIterable(filename)
     var count = 0l
     val start = System.currentTimeMillis
-    nti.foreach { triple =>
+    rdfIterable.foreach { triple =>
       if (Settings.nodeTypePredicates.contains(triple.predicateString)) {
         idMap.put(Utils.extractId(triple.objectString))
       }
@@ -114,14 +93,13 @@ class Freebase2NeoProcessor extends Logging {
   def createRelationshipsPass(filename:String) = {
     logger.info("starting create relationships pass...")
     stage += 1
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val rdfIterable = getRdfIterable(filename)
     var count = 0l
     var relationshipCount = 0l
     val start = System.currentTimeMillis
-    nti.foreach {
+    rdfIterable.foreach {
       triple =>
-        // if subject is an mid
-
+      // if subject is an mid
         if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
           val mid = Utils.extractId(triple.subjectString)
           val nodeId: Long = idMap.get(mid)
@@ -129,7 +107,7 @@ class Freebase2NeoProcessor extends Logging {
             // if object is an mid (this is a relationship) and
             // if predicate isn't ignored
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.") &&
-              !Settings.filters.predicate.blacklist.equalsSeq.contains(triple.predicateString)) {
+              !Settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
               val objMid = Utils.extractId(triple.objectString)
               val objNodeId: Long = idMap.get(objMid)
               if (objNodeId >= 0) {
@@ -150,26 +128,26 @@ class Freebase2NeoProcessor extends Logging {
   def createPropertiesPass(filename:String) = {
     logger.info("starting create properties pass...")
     stage += 1
-    val nti = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+    val rdfIterable = getRdfIterable(filename)
     var count = 0l
     var propertyCount = 0l
     val start = System.currentTimeMillis
-    nti.foreach { triple =>
-      // if subject is an mid
+    rdfIterable.foreach { triple =>
+    // if subject is an mid
       if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
         val mid = Utils.extractId(triple.subjectString)
         val nodeId: Long = idMap.get(mid)
         if (nodeId >= 0) {
           // if predicate isn't ignored
-          if (!Settings.filters.predicate.blacklist.equalsSeq.contains(triple.predicateString)) {
+          if (!Settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
             // if object is an mid (this is a relationship)
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
               // do nothing
             } else {
               // create property
               val key = sanitize(triple.predicateString)
-              if((Settings.filters.predicate.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.filters.predicate.blacklist.startsWithSeq)) &&
-                (endsWithAny(triple.objectString, Settings.filters.obj.whitelist.endsWithSeq) || startsWithAny(triple.objectString, Settings.filters.obj.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, Settings.filters.obj.blacklist.startsWithSeq) && !containsAny(triple.objectString, Settings.filters.obj.blacklist.containsSeq)))
+              if((Settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
+                (endsWithAny(triple.objectString, Settings.filters.objectFilter.whitelist.endsWithSeq) || startsWithAny(triple.objectString, Settings.filters.objectFilter.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, Settings.filters.objectFilter.blacklist.startsWithSeq) && !containsAny(triple.objectString, Settings.filters.objectFilter.blacklist.containsSeq)))
               ) {
                 // if property exists, convert it to an array of properties
                 // if it's already an array, append to the array
@@ -225,6 +203,6 @@ class Freebase2NeoProcessor extends Logging {
     return false
   }
 
-}
+  def shutdown =  inserter.shutdown
 
-*/
+}
