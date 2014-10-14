@@ -114,7 +114,7 @@ object Main extends App with Logging {
             // if object is an mid (this is a relationship) and
             // if predicate isn't ignored
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.") &&
-              !Settings.filters.predicate.blacklist.equalsSeq.contains(triple.predicateString)) {
+              !Settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
               val objMid = Utils.extractId(triple.objectString)
               val objNodeId: Long = idMap.get(objMid)
               if (objNodeId >= 0) {
@@ -146,15 +146,15 @@ object Main extends App with Logging {
         val nodeId: Long = idMap.get(mid)
         if (nodeId >= 0) {
           // if predicate isn't ignored
-          if (!Settings.filters.predicate.blacklist.equalsSeq.contains(triple.predicateString)) {
+          if (!Settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
             // if object is an mid (this is a relationship)
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
               // do nothing
             } else {
               // create property
               val key = sanitize(triple.predicateString)
-              if((Settings.filters.predicate.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.filters.predicate.blacklist.startsWithSeq)) &&
-                 (endsWithAny(triple.objectString, Settings.filters.obj.whitelist.endsWithSeq) || startsWithAny(triple.objectString, Settings.filters.obj.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, Settings.filters.obj.blacklist.startsWithSeq) && !containsAny(triple.objectString, Settings.filters.obj.blacklist.containsSeq)))
+              if((Settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
+                 (endsWithAny(triple.objectString, Settings.filters.objectFilter.whitelist.endsWithSeq) || startsWithAny(triple.objectString, Settings.filters.objectFilter.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, Settings.filters.objectFilter.blacklist.startsWithSeq) && !containsAny(triple.objectString, Settings.filters.objectFilter.blacklist.containsSeq)))
                 ) {
                 // if property exists, convert it to an array of properties
                 // if it's already an array, append to the array

@@ -23,21 +23,23 @@ object Settings {
   val statusLogFile = config.getString("statusLogFile")
   val nodeTypePredicates = getConfigList("nodeTypePredicates")
 
+
+  //TODO move all of this filter functionality elsewhere
+
   def startsWithAny(s:String, l:Seq[String]):Boolean = {
-    l.foreach(v => if(s.startsWith(v)) {return true})
-    return false
+    l.foreach(v => if(s.startsWith(v)) {true})
+    false
   }
 
   def endsWithAny(s:String, l:Seq[String]):Boolean = {
-    l.foreach(v => if(s.endsWith(v)) {return true})
-    return false
+    l.foreach(v => if(s.endsWith(v)) {true})
+    false
   }
 
   def containsAny(s:String, l:Seq[String]):Boolean = {
-    l.foreach(v => if(s.contains(v)) {return true})
-    return false
+    l.foreach(v => if(s.contains(v)) {true})
+    false
   }
-
 
   case class RdfFilterSetting(
     startsWithSeq : Seq[String] = Seq[String](),
@@ -50,11 +52,41 @@ object Settings {
     blacklist : RdfFilterSetting = RdfFilterSetting()
   )
 
-  case class Filters(subject : RdfFilter, predicate : RdfFilter, obj:RdfFilter) {
+  case class Filters(subjectFilter : RdfFilter, predicateFilter : RdfFilter, objectFilter : RdfFilter) {
 
-      def matchRdf(rdfTriple : RdfTriple) : Boolean = {
-        true
-      }
+    def matchFilter(string : String, filter : RdfFilter) = {
+
+        filter.blacklist.equalsSeq.contains(string) &&
+        startsWithAny(string, filter.blacklist.containsSeq) &&
+        endsWithAny(string, filter.blacklist.endsWithSeq) &&
+        containsAny(string, filter.blacklist.startsWithSeq) &&
+        !filter.whitelist.equalsSeq.contains(string) &&
+        !startsWithAny(string, filter.whitelist.containsSeq) &&
+        !endsWithAny(string, filter.whitelist.endsWithSeq) &&
+        !containsAny(string, filter.whitelist.startsWithSeq)
+    }
+
+    def matchSubject(string : String) = {
+
+      matchFilter(string, subjectFilter)
+    }
+
+    def matchPredicate(string : String) = {
+
+      matchFilter(string, predicateFilter)
+    }
+
+    def matchObject(string : String) = {
+
+      matchFilter(string, objectFilter)
+    }
+
+    def matchRdf(rdfTriple : RdfTriple) = {
+
+        matchSubject(rdfTriple.subjectString) &&
+        matchPredicate(rdfTriple.predicateString) &&
+        matchObject(rdfTriple.objectString)
+    }
   }
 
 
@@ -67,7 +99,7 @@ object Settings {
   }
 
   val filters = Filters(
-    subject = RdfFilter(
+    subjectFilter = RdfFilter(
       whitelist = RdfFilterSetting(
         startsWithSeq = getConfigList("filters.subject.whitelist.startsWith"),
         endsWithSeq = getConfigList("filters.subject.whitelist.endsWith"),
@@ -79,7 +111,7 @@ object Settings {
         containsSeq = getConfigList("filters.subject.blacklist.contains"),
         equalsSeq = getConfigList("filters.subject.blacklist.equals"))
     ),
-    predicate = RdfFilter(
+    predicateFilter = RdfFilter(
       whitelist = RdfFilterSetting(
         startsWithSeq = getConfigList("filters.predicate.whitelist.startsWith"),
         endsWithSeq = getConfigList("filters.predicate.whitelist.endsWith"),
@@ -93,7 +125,7 @@ object Settings {
         equalsSeq = getConfigList("filters.predicate.blacklist.equals")
       )
     ),
-    obj = RdfFilter(
+    objectFilter = RdfFilter(
       whitelist = RdfFilterSetting(
         startsWithSeq = getConfigList("filters.object.whitelist.startsWith"),
         endsWithSeq = getConfigList("filters.object.whitelist.endsWith"),
