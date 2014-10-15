@@ -148,10 +148,10 @@ class Freebase2Neo(ins:BatchInserter, settings:Settings) {
               // do nothing
             } else {
               // create property
-              val key = sanitize(triple.predicateString)
               if((settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
                 (endsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.endsWithSeq) || startsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, settings.filters.objectFilter.blacklist.startsWithSeq) && !containsAny(triple.objectString, settings.filters.objectFilter.blacklist.containsSeq)))
               ) {
+                val key = sanitize(triple.predicateString)
                 // if property exists, convert it to an array of properties
                 // if it's already an array, append to the array
                 if (inserter.nodeHasProperty(nodeId, key)) {
