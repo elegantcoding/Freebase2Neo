@@ -2,6 +2,8 @@ package com.elegantcoding.freebase2neo
 
 import java.util.zip.GZIPInputStream
 import java.io.FileInputStream
+import com.elegantcoding.rdfprocessor.rdftriple.types.RdfTriple
+
 import collection.JavaConverters._
 
 import org.neo4j.unsafe.batchinsert.BatchInserter
@@ -11,7 +13,8 @@ import com.elegantcoding.rdfprocessor.NTripleIterable
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.slf4j.Logger
 
-class Freebase2Neo(ins:BatchInserter, settings:Settings) {
+
+class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
   var logger = Logger(LoggerFactory.getLogger("freebase2neo"))
   var idMap:IdMap = new IdMap()
   var freebaseLabel = DynamicLabel.label("Freebase")
@@ -21,11 +24,14 @@ class Freebase2Neo(ins:BatchInserter, settings:Settings) {
   val MID_PREFIX = "<http://rdf.freebase.com/ns/m."
 
   var freebaseFile = settings.gzippedNTripleFile
-  // TODO make these come from setting
-  var inserter = ins
+
+  var batchInserter = inserter
 
   //TODO add 65536*16 to Settings
   def getRdfIterable(filename : String) = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+
+  def predicateFilter(rdfTriple : RdfTriple)  =
+    !settings.filters.predicateFilter.blacklist.equalsSeq.contains(rdfTriple)
 
 
   def createDb = {
@@ -86,7 +92,7 @@ class Freebase2Neo(ins:BatchInserter, settings:Settings) {
     stage += 1
     val start = System.currentTimeMillis()
     (0 until idMap.length).foreach { i =>
-      inserter.createNode(i, Map[String,java.lang.Object]("mid" -> mid2long.decode(idMap.arr(i))).asJava, freebaseLabel)
+      batchInserter.createNode(i, Map[String,java.lang.Object]("mid" -> mid2long.decode(idMap.arr(i))).asJava, freebaseLabel)
       Utils.displayProgress(stage, "create nodes", start, idMap.length, "nodes", i, i, "nodes")
     }
     Utils.displayDone(stage, "create nodes", start, idMap.length, "nodes", idMap.length, "nodes")
@@ -115,7 +121,7 @@ class Freebase2Neo(ins:BatchInserter, settings:Settings) {
               val objNodeId: Long = idMap.get(objMid)
               if (objNodeId >= 0) {
                 // create relationship
-                inserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
+                batchInserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
                 relationshipCount += 1
               }
             }
@@ -148,25 +154,29 @@ class Freebase2Neo(ins:BatchInserter, settings:Settings) {
               // do nothing
             } else {
               // create property
-              if((settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
-                (endsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.endsWithSeq) || startsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, settings.filters.objectFilter.blacklist.startsWithSeq) && !containsAny(triple.objectString, settings.filters.objectFilter.blacklist.containsSeq)))
-              ) {
-                val key = sanitize(triple.predicateString)
+
+              val key = sanitize(triple.predicateString)
+              if((settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) ||
+                  !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
+                 (endsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.endsWithSeq) ||
+                  startsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.startsWithSeq) ||
+                 (!startsWithAny(triple.objectString, settings.filters.objectFilter.blacklist.startsWithSeq) &&
+                  !containsAny(triple.objectString, settings.filters.objectFilter.blacklist.containsSeq)))) {
                 // if property exists, convert it to an array of properties
                 // if it's already an array, append to the array
-                if (inserter.nodeHasProperty(nodeId, key)) {
-                  var prop = inserter.getNodeProperties(nodeId).get(key)
-                  inserter.removeNodeProperty(nodeId, key)
+                if (batchInserter.nodeHasProperty(nodeId, key)) {
+                  var prop = batchInserter.getNodeProperties(nodeId).get(key)
+                  batchInserter.removeNodeProperty(nodeId, key)
                   prop match {
                     case prop: Array[String] => {
-                      inserter.setNodeProperty(nodeId, key, prop :+ triple.objectString)
+                      batchInserter.setNodeProperty(nodeId, key, prop :+ triple.objectString)
                     }
                     case _ => {
-                      inserter.setNodeProperty(nodeId, key, Array[String](prop.toString) :+ triple.objectString)
+                      batchInserter.setNodeProperty(nodeId, key, Array[String](prop.toString) :+ triple.objectString)
                     }
                   }
                 } else {
-                  inserter.setNodeProperty(nodeId, key, triple.objectString)
+                  batchInserter.setNodeProperty(nodeId, key, triple.objectString)
                 }
                 propertyCount += 1
               }
@@ -206,6 +216,6 @@ class Freebase2Neo(ins:BatchInserter, settings:Settings) {
     return false
   }
 
-  def shutdown =  inserter.shutdown
+  def shutdown =  batchInserter.shutdown
 
 }

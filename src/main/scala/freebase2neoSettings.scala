@@ -3,7 +3,7 @@ package com.elegantcoding.freebase2neo
 import com.elegantcoding.rdfprocessor.rdftriple.types.RdfTriple
 
 import collection.JavaConverters._
-import com.typesafe.config._
+import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions, ConfigSyntax}
 
 class Settings {
   val config = ConfigFactory.load(
@@ -54,14 +54,14 @@ class Settings {
 
     def matchFilter(string : String, filter : RdfFilter) = {
 
-        filter.blacklist.equalsSeq.contains(string) &&
-        startsWithAny(string, filter.blacklist.containsSeq) &&
-        endsWithAny(string, filter.blacklist.endsWithSeq) &&
-        containsAny(string, filter.blacklist.startsWithSeq) &&
-        !filter.whitelist.equalsSeq.contains(string) &&
-        !startsWithAny(string, filter.whitelist.containsSeq) &&
-        !endsWithAny(string, filter.whitelist.endsWithSeq) &&
-        !containsAny(string, filter.whitelist.startsWithSeq)
+        !filter.blacklist.equalsSeq.contains(string) &&
+        !startsWithAny(string, filter.blacklist.containsSeq) &&
+        !endsWithAny(string, filter.blacklist.endsWithSeq) &&
+        !containsAny(string, filter.blacklist.startsWithSeq) &&
+        filter.whitelist.equalsSeq.contains(string) &&
+        startsWithAny(string, filter.whitelist.containsSeq) &&
+        endsWithAny(string, filter.whitelist.endsWithSeq) &&
+        containsAny(string, filter.whitelist.startsWithSeq)
     }
 
     def matchSubject(string : String) = {
