@@ -11,7 +11,7 @@ import com.elegantcoding.rdfprocessor.NTripleIterable
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.slf4j.Logger
 
-class Freebase2Neo(ins:BatchInserter) {
+class Freebase2Neo(ins:BatchInserter, settings:Settings) {
   var logger = Logger(LoggerFactory.getLogger("freebase2neo"))
   var idMap:IdMap = new IdMap()
   var freebaseLabel = DynamicLabel.label("Freebase")
@@ -20,7 +20,7 @@ class Freebase2Neo(ins:BatchInserter) {
   var totalLines:Long = 0
   val MID_PREFIX = "<http://rdf.freebase.com/ns/m."
 
-  var freebaseFile = Settings.gzippedNTripleFile
+  var freebaseFile = settings.gzippedNTripleFile
   // TODO make these come from setting
   var inserter = ins
 
@@ -34,7 +34,7 @@ class Freebase2Neo(ins:BatchInserter) {
     val start = System.currentTimeMillis
     var totalEstimate = 2624000000l // TODO make this better based on file size?
     rdfIterable.foreach { triple =>
-      if (Settings.nodeTypePredicates.contains(triple.predicateString)) {
+      if (settings.nodeTypePredicates.contains(triple.predicateString)) {
         totalIds += 1
       }
       totalLines = totalLines + 1
@@ -51,7 +51,7 @@ class Freebase2Neo(ins:BatchInserter) {
     var count = 0l
     val start = System.currentTimeMillis
     rdfIterable.foreach { triple =>
-      if (Settings.nodeTypePredicates.contains(triple.predicateString)) {
+      if (settings.nodeTypePredicates.contains(triple.predicateString)) {
         idMap.put(Utils.extractId(triple.objectString))
       }
       count = count + 1
@@ -97,7 +97,7 @@ class Freebase2Neo(ins:BatchInserter) {
             // if object is an mid (this is a relationship) and
             // if predicate isn't ignored
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.") &&
-              !Settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
+              !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
               val objMid = Utils.extractId(triple.objectString)
               val objNodeId: Long = idMap.get(objMid)
               if (objNodeId >= 0) {
@@ -129,15 +129,15 @@ class Freebase2Neo(ins:BatchInserter) {
         val nodeId: Long = idMap.get(mid)
         if (nodeId >= 0) {
           // if predicate isn't ignored
-          if (!Settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
+          if (!settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
             // if object is an mid (this is a relationship)
             if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
               // do nothing
             } else {
               // create property
               val key = sanitize(triple.predicateString)
-              if((Settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, Settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
-                (endsWithAny(triple.objectString, Settings.filters.objectFilter.whitelist.endsWithSeq) || startsWithAny(triple.objectString, Settings.filters.objectFilter.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, Settings.filters.objectFilter.blacklist.startsWithSeq) && !containsAny(triple.objectString, Settings.filters.objectFilter.blacklist.containsSeq)))
+              if((settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) || !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
+                (endsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.endsWithSeq) || startsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.startsWithSeq) || (!startsWithAny(triple.objectString, settings.filters.objectFilter.blacklist.startsWithSeq) && !containsAny(triple.objectString, settings.filters.objectFilter.blacklist.containsSeq)))
               ) {
                 // if property exists, convert it to an array of properties
                 // if it's already an array, append to the array
@@ -171,7 +171,7 @@ class Freebase2Neo(ins:BatchInserter) {
   }
 
   def sanitize(s:String) = {
-    val s2 = s.replaceAllLiterally(Settings.freebaseRdfPrefix, "")
+    val s2 = s.replaceAllLiterally(settings.freebaseRdfPrefix, "")
       .replaceAllLiterally("<http://www.w3.org/1999/02/", "")
       .replaceAllLiterally("<http://www.w3.org/2000/01/", "")
       .replaceAllLiterally("<http://rdf.freebase.com/key/", "")

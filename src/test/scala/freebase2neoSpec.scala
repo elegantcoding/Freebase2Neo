@@ -1,7 +1,6 @@
-import com.elegantcoding.freebase2neo.{Freebase2Neo, Utils, IdMap, Main}
+import com.elegantcoding.freebase2neo._
 
 import org.apache.commons.io.FileUtils
-import org.neo4j.graphdb.DynamicLabel
 import org.neo4j.graphdb.factory.GraphDatabaseFactory
 import org.neo4j.unsafe.batchinsert.BatchInserters
 import org.scalatest._
@@ -24,9 +23,11 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
     ).asJava
   )
 
+  val settings = new Settings
+
   val freebase2neo = {
     FileUtils.deleteDirectory(new File(dbpath))
-    new Freebase2Neo(createInserter)
+    new Freebase2Neo(createInserter, settings)
   }
 
   "freebase2neo" should "be able extract an id" in {
@@ -54,7 +55,6 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
   it should "be able to create the nodes" in {
     FileUtils.deleteDirectory(new File(dbpath))
     freebase2neo.inserter = createInserter
-    freebase2neo.freebaseLabel = DynamicLabel.label("Freebase")
     freebase2neo.createNodes
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
@@ -76,7 +76,6 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
   it should "be able to create the relationships" in {
     freebase2neo.inserter = createInserter
-    freebase2neo.freebaseLabel = DynamicLabel.label("Freebase")
     freebase2neo.createRelationshipsPass("subset.ntriple.gz")
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
@@ -105,7 +104,6 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
   it should "be able to create properties" in {
     freebase2neo.inserter = createInserter
-    freebase2neo.freebaseLabel = DynamicLabel.label("Freebase")
     freebase2neo.createPropertiesPass("subset.ntriple.gz")
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)

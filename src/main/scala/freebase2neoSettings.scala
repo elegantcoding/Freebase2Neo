@@ -5,7 +5,7 @@ import com.elegantcoding.rdfprocessor.rdftriple.types.RdfTriple
 import collection.JavaConverters._
 import com.typesafe.config._
 
-object Settings {
+class Settings {
   val config = ConfigFactory.load(
                  "freebase2neo",
                  ConfigParseOptions.defaults()
