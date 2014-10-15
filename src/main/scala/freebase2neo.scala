@@ -4,35 +4,25 @@ import java.util.zip.GZIPInputStream
 import java.io.FileInputStream
 import collection.JavaConverters._
 
-import org.neo4j.unsafe.batchinsert.BatchInserters
+import org.neo4j.unsafe.batchinsert.BatchInserter
 import org.neo4j.graphdb.DynamicRelationshipType
 import org.neo4j.graphdb.DynamicLabel
 import com.elegantcoding.rdfprocessor.NTripleIterable
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.slf4j.Logger
 
-object Freebase2Neo {
+class Freebase2Neo(ins:BatchInserter) {
   var logger = Logger(LoggerFactory.getLogger("freebase2neo"))
   var idMap:IdMap = new IdMap()
   var freebaseLabel = DynamicLabel.label("Freebase")
   var stage:Int = 0
   var totalIds:Int = 0
   var totalLines:Long = 0
-  var dbpath = Settings.outputGraphPath
   val MID_PREFIX = "<http://rdf.freebase.com/ns/m."
 
   var freebaseFile = Settings.gzippedNTripleFile
   // TODO make these come from setting
-  var inserter = BatchInserters.inserter(
-    dbpath,
-    Map[String,String](
-      "neostore.nodestore.db.mapped_memory" -> "1G",
-      "neostore.relationshipstore.db.mapped_memory" -> "16G",
-      "neostore.propertystore.db.mapped_memory" -> "16G",
-      "neostore.propertystore.db.strings" -> "16G"
-    ).asJava
-  )
-
+  var inserter = ins
 
   //TODO add 65536*16 to Settings
   def getRdfIterable(filename : String) = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))

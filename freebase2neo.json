@@ -1,5 +1,5 @@
 {
-  "outputGraphPath":"testdb/",
+  "outputGraphPath":"target/testdb/",
   "gzippedNTripleFile":"subset.ntriple.gz",
   "errorLogFile" : "errorLog.txt",
   "statusLogFile" : "statusLog.txt",
