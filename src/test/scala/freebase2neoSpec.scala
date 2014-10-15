@@ -25,10 +25,9 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
   val settings = new Settings
 
-  val freebase2neo = {
-    FileUtils.deleteDirectory(new File(dbpath))
-    new Freebase2Neo(createInserter, settings)
-  }
+  FileUtils.deleteDirectory(new File(dbpath))
+
+  var freebase2neo = new Freebase2Neo(createInserter, settings)
 
   "freebase2neo" should "be able extract an id" in {
     val obj = "<http://rdf.freebase.com/ns/m.05ljt>"
@@ -44,7 +43,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "be able to get the ids" in {
-    freebase2neo.inserter = createInserter
+    freebase2neo.batchInserter = createInserter
     freebase2neo.idMap = new IdMap(21054)
     freebase2neo.getIdsPass("subset.ntriple.gz")
     freebase2neo.persistIdMap
@@ -54,7 +53,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
   it should "be able to create the nodes" in {
     FileUtils.deleteDirectory(new File(dbpath))
-    freebase2neo.inserter = createInserter
+    freebase2neo.batchInserter = createInserter
     freebase2neo.createNodes
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
@@ -75,7 +74,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "be able to create the relationships" in {
-    freebase2neo.inserter = createInserter
+    freebase2neo.batchInserter = createInserter
     freebase2neo.createRelationshipsPass("subset.ntriple.gz")
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
@@ -103,7 +102,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "be able to create properties" in {
-    freebase2neo.inserter = createInserter
+    freebase2neo.batchInserter = createInserter
     freebase2neo.createPropertiesPass("subset.ntriple.gz")
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
