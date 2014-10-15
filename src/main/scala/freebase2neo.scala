@@ -27,6 +27,19 @@ class Freebase2Neo(ins:BatchInserter) {
   //TODO add 65536*16 to Settings
   def getRdfIterable(filename : String) = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
 
+
+  def createDb = {
+
+    countIdsPass(Settings.gzippedNTripleFile)
+    getIdsPass(Settings.gzippedNTripleFile)
+    persistIdMap
+    createNodes
+    createRelationshipsPass(Settings.gzippedNTripleFile)
+    createPropertiesPass(Settings.gzippedNTripleFile)
+    shutdown
+  }
+
+
   def countIdsPass(filename:String) = {
     logger.info("starting stage (counting machine ids)...")
     stage += 1

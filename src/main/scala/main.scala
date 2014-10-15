@@ -18,13 +18,16 @@ object Main extends App {
     ).asJava
   )
   val freebase2neo = new Freebase2Neo(inserter)
-  freebase2neo.countIdsPass(Settings.gzippedNTripleFile)
-  freebase2neo.getIdsPass(Settings.gzippedNTripleFile)
-  freebase2neo.persistIdMap
-  freebase2neo.createNodes
-  freebase2neo.createRelationshipsPass(Settings.gzippedNTripleFile)
-  freebase2neo.createPropertiesPass(Settings.gzippedNTripleFile)
-  freebase2neo.shutdown
+
+  freebase2neo.createDb
+
+//  freebase2neo.countIdsPass(Settings.gzippedNTripleFile)
+//  freebase2neo.getIdsPass(Settings.gzippedNTripleFile)
+//  freebase2neo.persistIdMap
+//  freebase2neo.createNodes
+//  freebase2neo.createRelationshipsPass(Settings.gzippedNTripleFile)
+//  freebase2neo.createPropertiesPass(Settings.gzippedNTripleFile)
+//  freebase2neo.shutdown
   logger.info("done!")
 }
 
