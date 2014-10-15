@@ -7,9 +7,10 @@ import org.slf4j.LoggerFactory
 import org.neo4j.unsafe.batchinsert.BatchInserters
 
 object Main extends App {
+  val settings = new Settings
   var logger = Logger(LoggerFactory.getLogger("freebase2neo.main"))
   val inserter = BatchInserters.inserter(
-    Settings.outputGraphPath,
+    settings.outputGraphPath,
     Map[String,String](
       "neostore.nodestore.db.mapped_memory" -> "1G",
       "neostore.relationshipstore.db.mapped_memory" -> "16G",
@@ -17,17 +18,8 @@ object Main extends App {
       "neostore.propertystore.db.strings" -> "16G"
     ).asJava
   )
-  val freebase2neo = new Freebase2Neo(inserter)
-
+  val freebase2neo = new Freebase2Neo(inserter, settings)
   freebase2neo.createDb
-
-//  freebase2neo.countIdsPass(Settings.gzippedNTripleFile)
-//  freebase2neo.getIdsPass(Settings.gzippedNTripleFile)
-//  freebase2neo.persistIdMap
-//  freebase2neo.createNodes
-//  freebase2neo.createRelationshipsPass(Settings.gzippedNTripleFile)
-//  freebase2neo.createPropertiesPass(Settings.gzippedNTripleFile)
-//  freebase2neo.shutdown
   logger.info("done!")
 }
 

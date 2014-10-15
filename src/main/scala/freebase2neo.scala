@@ -30,12 +30,12 @@ class Freebase2Neo(ins:BatchInserter, settings:Settings) {
 
   def createDb = {
 
-    countIdsPass(Settings.gzippedNTripleFile)
-    getIdsPass(Settings.gzippedNTripleFile)
+    countIdsPass(settings.gzippedNTripleFile)
+    getIdsPass(settings.gzippedNTripleFile)
     persistIdMap
     createNodes
-    createRelationshipsPass(Settings.gzippedNTripleFile)
-    createPropertiesPass(Settings.gzippedNTripleFile)
+    createRelationshipsPass(settings.gzippedNTripleFile)
+    createPropertiesPass(settings.gzippedNTripleFile)
     shutdown
   }
 
