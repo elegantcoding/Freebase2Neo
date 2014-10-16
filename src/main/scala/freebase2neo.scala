@@ -2,7 +2,7 @@ package com.elegantcoding.freebase2neo
 
 import java.util.zip.GZIPInputStream
 import java.io.FileInputStream
-import com.elegantcoding.rdfprocessor.rdftriple.types.RdfTriple
+import com.elegantcoding.rdfprocessor.rdftriple.types.{RdfTupleFilter, RdfTriple}
 
 import collection.JavaConverters._
 
@@ -28,10 +28,15 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
   var batchInserter = inserter
 
   //TODO add 65536*16 to Settings
-  def getRdfIterable(filename : String) = new NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536*16))
+//  def getRdfIterable(filename : String) = NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16))
+//
+//  def getRdfIterable(filename : String, rdfTripleFilter : RdfTupleFilter[RdfTriple]) = NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16),
+//    8192 * 256, (s: String) => true, rdfTripleFilter);
 
-  def predicateFilter(rdfTriple : RdfTriple)  =
-    !settings.filters.predicateFilter.blacklist.equalsSeq.contains(rdfTriple)
+    def getRdfIterable(filename : String, rdfTripleFilterOption : Option[RdfTupleFilter[RdfTriple]] = None) =  rdfTripleFilterOption match {
+      case None => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16))
+      case Some(rdfTripleFilter) => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16), 8192 * 256, (s: String) => true,  rdfTripleFilter)
+    }
 
 
   def createDb = {
