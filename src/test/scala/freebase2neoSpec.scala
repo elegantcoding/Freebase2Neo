@@ -111,6 +111,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
     try {
       val n = db.getNodeById(4l) // Apache HTTP Server
       //println("test: "+ n.getProperty("common.topic.description"))
+      n.getProperty("type.object.name").asInstanceOf[String] should be("\"Apache HTTP Server\"@en")
       n.getProperty("common.topic.description").asInstanceOf[String].startsWith("\"The Apache HTTP Server, commonly referred to as Apache") should be(true)
       tx.success
     } catch {
