@@ -35,21 +35,20 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
 
   def createDb = {
-
-    countIdsPass(settings.gzippedNTripleFile)
-    getIdsPass(settings.gzippedNTripleFile)
+    countIdsPass
+    getIdsPass
     persistIdMap
     createNodes
-    createRelationshipsPass(settings.gzippedNTripleFile)
-    createPropertiesPass(settings.gzippedNTripleFile)
+    createRelationshipsPass
+    createPropertiesPass
     shutdown
   }
 
 
-  def countIdsPass(filename:String) = {
+  def countIdsPass = {
     logger.info("starting stage (counting machine ids)...")
     stage += 1
-    val rdfIterable = getRdfIterable(filename)
+    val rdfIterable = getRdfIterable(freebaseFile)
     val start = System.currentTimeMillis
     var totalEstimate = 2624000000l // TODO make this better based on file size?
     rdfIterable.foreach { triple =>
@@ -63,10 +62,10 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     Utils.displayDone(stage, "count machine ids / lines", start, totalLines, "lines", totalIds, "machine ids")
   }
 
-  def getIdsPass(filename:String) = {
+  def getIdsPass = {
     logger.info("starting stage (collecting machine ids)...")
     stage += 1
-    val rdfIterable = getRdfIterable(filename)
+    val rdfIterable = getRdfIterable(freebaseFile)
     var count = 0l
     val start = System.currentTimeMillis
     rdfIterable.foreach { triple =>
@@ -99,10 +98,10 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     logger.info("done creating the nodes...")
   }
 
-  def createRelationshipsPass(filename:String) = {
+  def createRelationshipsPass = {
     logger.info("starting create relationships pass...")
     stage += 1
-    val rdfIterable = getRdfIterable(filename)
+    val rdfIterable = getRdfIterable(freebaseFile)
     var count = 0l
     var relationshipCount = 0l
     val start = System.currentTimeMillis
@@ -134,10 +133,10 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     Utils.displayDone(stage, "create relationships", start, count, "triples", relationshipCount, "relationships")
   }
 
-  def createPropertiesPass(filename:String) = {
+  def createPropertiesPass = {
     logger.info("starting create properties pass...")
     stage += 1
-    val rdfIterable = getRdfIterable(filename)
+    val rdfIterable = getRdfIterable(freebaseFile)
     var count = 0l
     var propertyCount = 0l
     val start = System.currentTimeMillis

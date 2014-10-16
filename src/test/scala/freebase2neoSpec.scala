@@ -28,6 +28,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
   FileUtils.deleteDirectory(new File(dbpath))
 
   var freebase2neo = new Freebase2Neo(createInserter, settings)
+  freebase2neo.freebaseFile = "subset.ntriple.gz"
 
   "freebase2neo" should "be able extract an id" in {
     val obj = "<http://rdf.freebase.com/ns/m.05ljt>"
@@ -36,7 +37,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
   "freebase2neo" should "be able to count the ids" in {
     freebase2neo.logger = Logger(LoggerFactory.getLogger("freebase2neo.mainSpec"))
-    freebase2neo.countIdsPass("subset.ntriple.gz")
+    freebase2neo.countIdsPass
     freebase2neo.totalIds should be (21007)
     freebase2neo.totalLines should be (8731903)
     freebase2neo.shutdown
@@ -44,8 +45,8 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
   it should "be able to get the ids" in {
     freebase2neo.batchInserter = createInserter
-    freebase2neo.idMap = new IdMap(21054)
-    freebase2neo.getIdsPass("subset.ntriple.gz")
+    // freebase2neo.idMap = new IdMap(21054)
+    freebase2neo.getIdsPass
     freebase2neo.persistIdMap
     freebase2neo.idMap.getMid("05ljtx") should be (1431)
     freebase2neo.shutdown
@@ -75,7 +76,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
   it should "be able to create the relationships" in {
     freebase2neo.batchInserter = createInserter
-    freebase2neo.createRelationshipsPass("subset.ntriple.gz")
+    freebase2neo.createRelationshipsPass
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
     val db = new GraphDatabaseFactory().newEmbeddedDatabase(dbpath)
@@ -103,7 +104,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
   it should "be able to create properties" in {
     freebase2neo.batchInserter = createInserter
-    freebase2neo.createPropertiesPass("subset.ntriple.gz")
+    freebase2neo.createPropertiesPass
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
     val db = new GraphDatabaseFactory().newEmbeddedDatabase(dbpath)
