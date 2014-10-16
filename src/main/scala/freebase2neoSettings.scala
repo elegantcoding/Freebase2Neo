@@ -54,14 +54,14 @@ class Settings {
 
     def matchFilter(string : String, filter : RdfFilter) = {
 
-        !filter.blacklist.equalsSeq.contains(string) &&
-        !startsWithAny(string, filter.blacklist.containsSeq) &&
-        !endsWithAny(string, filter.blacklist.endsWithSeq) &&
-        !containsAny(string, filter.blacklist.startsWithSeq) &&
-        filter.whitelist.equalsSeq.contains(string) &&
-        startsWithAny(string, filter.whitelist.containsSeq) &&
-        endsWithAny(string, filter.whitelist.endsWithSeq) &&
-        containsAny(string, filter.whitelist.startsWithSeq)
+       (filter.whitelist.equalsSeq.contains(string) ||
+        !filter.blacklist.equalsSeq.contains(string)) &&
+       (startsWithAny(string, filter.whitelist.containsSeq) ||
+        !startsWithAny(string, filter.blacklist.containsSeq)) &&
+       (endsWithAny(string, filter.whitelist.endsWithSeq) ||
+        !endsWithAny(string, filter.blacklist.endsWithSeq)) &&
+       (containsAny(string, filter.whitelist.startsWithSeq) ||
+        !containsAny(string, filter.blacklist.startsWithSeq))
     }
 
     def matchSubject(string : String) = {
