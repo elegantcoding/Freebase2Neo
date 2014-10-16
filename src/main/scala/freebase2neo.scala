@@ -147,14 +147,10 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
         val mid = Utils.extractId(triple.subjectString)
         val nodeId: Long = idMap.get(mid)
         if (nodeId >= 0) {
-          // if predicate isn't ignored
-          if (!settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
-            // if object is an mid (this is a relationship)
-            if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
-              // do nothing
-            } else {
               // create property
-              if((settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) ||
+              if(!triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.") &&  // if object is an mid (this is a relationship)
+                 !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString) &&
+                 (settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) ||
                   !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
                  (endsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.endsWithSeq) ||
                   startsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.startsWithSeq) ||
@@ -178,8 +174,6 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
                   batchInserter.setNodeProperty(nodeId, key, triple.objectString)
                 }
                 propertyCount += 1
-              }
-            }
           }
         } else {
           // TODO handle labels?
