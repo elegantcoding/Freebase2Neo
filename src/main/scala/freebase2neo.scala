@@ -35,7 +35,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
     def getRdfIterable(filename : String, rdfTripleFilterOption : Option[RdfTupleFilter[RdfTriple]] = None) =  rdfTripleFilterOption match {
       case None => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16))
-      case Some(rdfTripleFilter) => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16), 8192 * 256, (s: String) => true,  rdfTripleFilter)
+      case Some(rdfTripleFilter) => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16), rdfTripleFilter)
     }
 
 
