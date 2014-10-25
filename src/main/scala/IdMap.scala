@@ -1,10 +1,11 @@
 package com.elegantcoding.freebase2neo
 
 import java.util.Arrays
-import collection.mutable.BitSet
+import scala.collection.mutable.{ArrayBuffer, BitSet}
 
-class IdMap(size:Int = 200000000) {
-  var arr = Array.fill[Long](size)(Long.MaxValue)
+class IdMap {
+  var array = ArrayBuffer[Long]()
+  var arr = Array[Long]()
   var idx:Int = 0
   var flag = false
 
@@ -22,7 +23,7 @@ class IdMap(size:Int = 200000000) {
 
   def put(mid:Long) = {
     flag = false
-    arr(idx) = mid
+    array += mid
     idx += 1
   }
 
@@ -36,9 +37,10 @@ class IdMap(size:Int = 200000000) {
   }
 
   def done = {
+    arr = array.toArray
     Arrays.sort(arr)
     // TODO make this estimate based on file size?
-    val arr2 = Array.fill[Long](size)(Long.MaxValue)
+    val arr2 = Array.fill[Long](arr.length)(Long.MaxValue)
     var lastx = Long.MinValue
     var i = 0
     (0 until idx).foreach{x =>
@@ -49,7 +51,7 @@ class IdMap(size:Int = 200000000) {
       lastx = arr(x)
     }
     idx = 0
-
+    array = null
     arr = Array.fill[Long](i)(Long.MaxValue)
 
     (0 until i).foreach{x =>
