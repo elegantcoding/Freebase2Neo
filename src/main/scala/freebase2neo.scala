@@ -201,10 +201,10 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
                 } else {
                   batchInserter.setNodeProperty(nodeId, key, e.objectString)
                 }
+                propertyCount += 1
+                Utils.displayProgress(stage, "create properties", start, totalLines, "triples", e.count, propertyCount, "properties")
               }
             }
-            propertyCount += 1
-            Utils.displayProgress(stage, "create properties", start, totalLines, "triples", e.count, propertyCount, "properties")
           }
           case Some(e: PoisonItem) => {
             //println("propwriter dying, received poison")
