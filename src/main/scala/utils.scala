@@ -60,7 +60,7 @@ package object Utils {
     while (shortItemMovingAvgs.head._2 < elapsed - (10 * 1000)) {
       shortItemMovingAvgs = shortItemMovingAvgs.tail
     }
-    if (elapsed == longMovingAvgs.head._2) {
+    if (elapsed == shortItemMovingAvgs.head._2) {
       0.0
     } else {
       (current - shortItemMovingAvgs.head._1) / (elapsed - shortItemMovingAvgs.head._2) * 1000.0

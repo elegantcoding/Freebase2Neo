@@ -35,17 +35,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
     Utils.extractId(obj) should be(182809)
   }
 
-  "freebase2neo" should "be able to count the ids" in {
-    freebase2neo.logger = Logger(LoggerFactory.getLogger("freebase2neo.mainSpec"))
-    freebase2neo.countIdsPass
-    freebase2neo.totalIds should be (21007)
-    freebase2neo.totalLines should be (8731903)
-    freebase2neo.shutdown
-  }
-
   it should "be able to get the ids" in {
-    freebase2neo.batchInserter = createInserter
-    // freebase2neo.idMap = new IdMap(21054)
     freebase2neo.getIdsPass
     freebase2neo.persistIdMap
     freebase2neo.idMap.getMid("05ljtx") should be (1431)
