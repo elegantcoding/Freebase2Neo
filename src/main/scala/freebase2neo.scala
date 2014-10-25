@@ -123,7 +123,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
           }
           case None => {
             // println("relwriter sleeping, buffer empty")
-            Thread.sleep(100)
+            Thread.sleep(10)
           }
           case _ => println("relwriter dying, unexpected relitem type"); doneSignal.countDown; return
         }
@@ -160,7 +160,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
 
     while (!buffer.tryPut(PoisonItem(count))) {
       //println("relreader sleeping, buffer full")
-      Thread.sleep(100)
+      Thread.sleep(10)
     }
 
     doneSignal.await()
@@ -244,7 +244,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
             // create property
             while (!buffer.tryPut(GoodItem(triple.subjectString, triple.predicateString, triple.objectString, count))) {
               // println("propreader sleeping, buffer full")
-              Thread.sleep(100)
+              Thread.sleep(10)
             }
           }
         } else {
@@ -255,7 +255,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
 
     while (!buffer.tryPut(PoisonItem(count))) {
       // println("propreader sleeping, buffer full")
-      Thread.sleep(100)
+      Thread.sleep(10)
     }
 
     doneSignal.await()
