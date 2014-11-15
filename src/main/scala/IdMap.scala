@@ -1,65 +1,82 @@
 package com.elegantcoding.freebase2neo
 
 import java.util.Arrays
-import collection.mutable.BitSet
+import scala.collection.mutable.{ArrayBuffer, BitSet}
 
-class IdMap(size:Int = 200000000) {
-  var arr = Array.fill[Long](size)(Long.MaxValue)
-  var idx:Int = 0
-  var flag = false
+trait MidToIdMap {
+  val midArray: Array[Long]
+  def length : Int
+  def getMid(mid:String) : Int
+  def get(mid:Long):Int
+}
+
+object MidToIdMapBuilder {
+  def apply() = new MidToIdMapBuilder
+}
+
+class MidToIdMapBuilder {
+
+  private class MidToIdMapImpl(val midArray : Array[Long]) extends MidToIdMap {
+
+    def get(mid:Long) : Int = {
+      Arrays.binarySearch(midArray, 0, midArray.length, mid)
+    }
+
+    def getMid(mid : String) : Int = {
+
+      println("getMid : " + mid)
+      println("getMid : mid2long.encode(mid) : " + mid2long.encode(mid))
+      println("getMid : get(mid2long.encode(mid)) : " + get(mid2long.encode(mid)))
+
+      get(mid2long.encode(mid))
+    }
+
+    def length = midArray.length
+
+    //  def length:Int = {
+    //    length
+    //  }
+  }
+
+  var midArrayBuffer = ArrayBuffer[Long]()
+  var currentIndex : Int = 0
 
   def putMid(mid:String) = {
     put(mid2long.encode(mid))
   }
 
-  def containsMid(mid:String) = {
-    contains(mid2long.encode(mid))
-  }
-
-  def getMid(mid:String) = {
-    get(mid2long.encode(mid))
-  }
-
   def put(mid:Long) = {
-    flag = false
-    arr(idx) = mid
-    idx += 1
+    midArrayBuffer += mid
+    currentIndex += 1
   }
 
-  def get(mid:Long):Int = {
-    if(!flag) throw new Exception("need to call done() before contains or get.")
-    Arrays.binarySearch(arr, 0, idx, mid)
-  }
+//  def containsMid(mid:String) = {
+//    contains(mid2long.encode(mid))
+//  }
+//
+//
+//
+//  def contains(mid:Long):Boolean = {
+//    get(mid) >= 0
+//  }
 
-  def contains(mid:Long):Boolean = {
-    get(mid) >= 0
-  }
+  // convert ArrayBuffer to Array and sort
+  def getMidToIdMap : MidToIdMap = {
 
-  def done = {
-    Arrays.sort(arr)
-    // TODO make this estimate based on file size?
-    val arr2 = Array.fill[Long](size)(Long.MaxValue)
-    var lastx = Long.MinValue
-    var i = 0
-    (0 until idx).foreach{x =>
-      if(arr(x) != lastx) {
-        arr2(i) = arr(x)
-        i += 1
-      }
-      lastx = arr(x)
-    }
-    idx = 0
+    //scala.util.Sorting.stableSort()
 
-    arr = Array.fill[Long](i)(Long.MaxValue)
+    //var midArray = scala.util.Sorting.stableSort(midArrayBuffer.toList)
+    var midArray = scala.util.Sorting.stableSort(midArrayBuffer.groupBy{x => x}.values.map(_.head).toList)
 
-    (0 until i).foreach{x =>
-      arr(idx) = arr2(x)
-      idx += 1
-    }
-    flag = true
-  }
+    //var midArray = scala.util.Sorting.stableSort(midArrayBuffer).groupBy{x => x}.map{_._2.head}.toArray
+    //var midArray = scala.util.Sorting.stableSort(midArrayBuffer).toArray
 
-  def length:Int = {
-    idx
+    println("midArray:")
+    println("midArray.length" + midArray.length)
+    midArray.foreach{ println(_) }
+
+
+    new MidToIdMapImpl(midArray)
   }
 }
+

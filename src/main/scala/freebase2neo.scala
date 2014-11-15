@@ -16,22 +16,40 @@ import com.typesafe.scalalogging.slf4j.Logger
 
 class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
   var logger = Logger(LoggerFactory.getLogger("freebase2neo"))
-  var idMap:IdMap = new IdMap()
+  var idMap : MidToIdMap = MidToIdMapBuilder().getMidToIdMap; // create empty one for now
   var freebaseLabel = DynamicLabel.label("Freebase")
   var stage:Int = 0
-  var totalIds:Int = 0
-  var totalLines:Long = 0
+  //var totalLines:Long = 0
   val MID_PREFIX = "<http://rdf.freebase.com/ns/m."
 
   var freebaseFile = settings.gzippedNTripleFile
 
+  //TODO: make this an Actor
+  val statusConsole = new StatusConsole();
+
+
+  def createStatusInfo(stage : Int, stageDescription : String) =
+    new StatusInfo(stage,
+                   stageDescription,
+                   Seq[ItemCountStatus](
+                      new ItemCountStatus("line", Seq[MovingAverage](
+                        new MovingAverage("(10 second moving average)",(10 * 1000)),
+                        new MovingAverage("(10 min moving average)", (10 * 60 * 1000)))
+                      )
+                   )
+    )
+
+
+
+
+      def extractId(str:String):Long = {
+    mid2long.encode(str.substring(MID_PREFIX.length, str.length()-1))
+  }
+
+
   var batchInserter = inserter
 
   //TODO add 65536*16 to Settings
-//  def getRdfIterable(filename : String) = NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16))
-//
-//  def getRdfIterable(filename : String, rdfTripleFilter : RdfTupleFilter[RdfTriple]) = NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16),
-//    8192 * 256, (s: String) => true, rdfTripleFilter);
 
     def getRdfIterable(filename : String, rdfTripleFilterOption : Option[RdfTupleFilter[RdfTriple]] = None) =  rdfTripleFilterOption match {
       case None => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16))
@@ -40,9 +58,8 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
 
   def createDb = {
-    countIdsPass
     getIdsPass
-    persistIdMap
+    //persistIdMap
     createNodes
     createRelationshipsPass
     createPropertiesPass
@@ -50,62 +67,58 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
   }
 
 
-  def countIdsPass = {
-    logger.info("starting stage (counting machine ids)...")
-    stage += 1
-    val rdfIterable = getRdfIterable(freebaseFile)
-    val start = System.currentTimeMillis
-    var totalEstimate = 2624000000l // TODO make this better based on file size?
-    rdfIterable.foreach { triple =>
-      if (settings.nodeTypePredicates.contains(triple.predicateString)) {
-        totalIds += 1
-      }
-      totalLines = totalLines + 1
-      Utils.displayProgress(stage, "count machine ids / lines", start, totalEstimate, "lines", totalLines, totalIds, "machine ids")
-    }
-    logger.info("done stage (counting machine ids)...")
-    Utils.displayDone(stage, "count machine ids / lines", start, totalLines, "lines", totalIds, "machine ids")
-  }
 
   def getIdsPass = {
     logger.info("starting stage (collecting machine ids)...")
+
     stage += 1
+
+    val statusInfo = createStatusInfo(stage, "get machine ids (collecting machine ids)")
+
+    val midToIdMapBuilder = MidToIdMapBuilder()
+
     val rdfIterable = getRdfIterable(freebaseFile)
-    var count = 0l
-    val start = System.currentTimeMillis
+    //var count = 0l
+    //val start = System.currentTimeMillis
     rdfIterable.foreach { triple =>
       if (settings.nodeTypePredicates.contains(triple.predicateString)) {
-        idMap.put(Utils.extractId(triple.objectString))
+        midToIdMapBuilder.put(extractId(triple.objectString))
       }
-      count = count + 1
-      Utils.displayProgress(stage, "get machine ids", start, totalLines, "triples", count, idMap.length, "machine ids")
+
+      //statusInfo.itemCountStatus(0).incCount
+
+      //statusConsole.displayProgress(statusInfo)
     }
     logger.info("done stage (collecting machine ids)...")
-    Utils.displayDone(stage, "get machine ids", start, count, "triples", idMap.length, "machine ids")
+
+    //statusConsole.displayProgress(statusInfo)
+    //Utils.displayDone(stage, "get machine ids", start, count, "triples", idMap.length, "machine ids")
+    idMap = midToIdMapBuilder.getMidToIdMap
+
   }
 
   def persistIdMap = {
     logger.info("starting persisting the id map...")
-    idMap.done // sorts id map, etc.
+    //idMap.done // sorts id map, etc.
     // TODO persistIdMap
     logger.info("done persisting the id map...")
   }
 
   def createNodes = {
     logger.info("starting creating the nodes...")
-    stage += 1
+    //stage += 1
     val start = System.currentTimeMillis()
     (0 until idMap.length).foreach { i =>
-      batchInserter.createNode(i, Map[String,java.lang.Object]("mid" -> mid2long.decode(idMap.arr(i))).asJava, freebaseLabel)
-      Utils.displayProgress(stage, "create nodes", start, idMap.length, "nodes", i, i, "nodes")
+      batchInserter.createNode(i, Map[String,java.lang.Object]("mid" -> mid2long.decode(idMap.midArray(i))).asJava, freebaseLabel)
+      //Utils.displayProgress(stage, "create nodes", start, idMap.length, "nodes", i, i, "nodes")
     }
-    Utils.displayDone(stage, "create nodes", start, idMap.length, "nodes", idMap.length, "nodes")
+    //Utils.displayDone(stage, "create nodes", start, idMap.length, "nodes", idMap.length, "nodes")
     logger.info("done creating the nodes...")
   }
 
   def createRelationshipsPass = {
     logger.info("starting create relationships pass...")
-    stage += 1
+    //stage += 1
     val rdfIterable = getRdfIterable(freebaseFile)
     var count = 0l
     var relationshipCount = 0l
@@ -113,15 +126,15 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     rdfIterable.foreach {
       triple =>
       // if subject is an mid
-        if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
-          val mid = Utils.extractId(triple.subjectString)
+        if (triple.subjectString.startsWith(MID_PREFIX)) {
+          val mid = extractId(triple.subjectString)
           val nodeId: Long = idMap.get(mid)
           if (nodeId >= 0) {
             // if object is an mid (this is a relationship) and
             // if predicate isn't ignored
-            if (triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.") &&
+            if (triple.objectString.startsWith(MID_PREFIX) &&
               !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
-              val objMid = Utils.extractId(triple.objectString)
+              val objMid = extractId(triple.objectString)
               val objNodeId: Long = idMap.get(objMid)
               if (objNodeId >= 0) {
                 // create relationship
@@ -132,27 +145,27 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
           }
         }
         count = count + 1
-        Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, relationshipCount, "relationships")
+        //Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, relationshipCount, "relationships")
     }
     logger.info("done create relationships pass...")
-    Utils.displayDone(stage, "create relationships", start, count, "triples", relationshipCount, "relationships")
+    //Utils.displayDone(stage, "create relationships", start, count, "triples", relationshipCount, "relationships")
   }
 
   def createPropertiesPass = {
     logger.info("starting create properties pass...")
-    stage += 1
+    //stage += 1
     val rdfIterable = getRdfIterable(freebaseFile)
     var count = 0l
     var propertyCount = 0l
     val start = System.currentTimeMillis
     rdfIterable.foreach { triple =>
     // if subject is an mid
-      if (triple.subjectString.startsWith("<http://rdf.freebase.com/ns/m.")) {
-        val mid = Utils.extractId(triple.subjectString)
+      if (triple.subjectString.startsWith(MID_PREFIX)) {
+        val mid = extractId(triple.subjectString)
         val nodeId: Long = idMap.get(mid)
         if (nodeId >= 0) {
               // create property
-              if(!triple.objectString.startsWith("<http://rdf.freebase.com/ns/m.") &&  // if object is an mid (this is a relationship)
+              if(!triple.objectString.startsWith(MID_PREFIX) &&  // if object is an mid (this is a relationship)
                  !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString) &&
                  (settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) ||
                   !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
@@ -184,10 +197,10 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
         }
       }
       count = count + 1
-      Utils.displayProgress(stage, "create properties", start, totalLines, "triples", count, propertyCount, "properties")
+      //Utils.displayProgress(stage, "create properties", start, totalLines, "triples", count, propertyCount, "properties")
     }
     logger.info("done create properties pass...")
-    Utils.displayDone(stage, "create properties", start, count, "triples", propertyCount, "properties")
+    //Utils.displayDone(stage, "create properties", start, count, "triples", propertyCount, "properties")
   }
 
   def sanitize(s:String) = {
