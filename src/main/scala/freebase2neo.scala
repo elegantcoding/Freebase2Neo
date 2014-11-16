@@ -13,7 +13,6 @@ import com.elegantcoding.rdfprocessor.NTripleIterable
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.slf4j.Logger
 
-
 class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
   var logger = Logger(LoggerFactory.getLogger("freebase2neo"))
   var idMap : MidToIdMap = MidToIdMapBuilder().getMidToIdMap; // create empty one for now
@@ -59,13 +58,14 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
   def createDb = {
     getIdsPass
-    //persistIdMap
+    persistIdMap
     createNodes
     createRelationshipsPass
     createPropertiesPass
     shutdown
   }
 
+  val midToIdMapBuilder = MidToIdMapBuilder()
 
 
   def getIdsPass = {
@@ -73,9 +73,9 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
     stage += 1
 
-    val statusInfo = createStatusInfo(stage, "get machine ids (collecting machine ids)")
+    val statusInfo = createStatusInfo(stage, "collecting machine ids")
 
-    val midToIdMapBuilder = MidToIdMapBuilder()
+//    val midToIdMapBuilder = MidToIdMapBuilder()
 
     val rdfIterable = getRdfIterable(freebaseFile)
     //var count = 0l
@@ -85,40 +85,48 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
         midToIdMapBuilder.put(extractId(triple.objectString))
       }
 
-      //statusInfo.itemCountStatus(0).incCount
+      statusInfo.itemCountStatus(0).incCount
 
-      //statusConsole.displayProgress(statusInfo)
+      statusConsole.displayProgress(statusInfo)
     }
     logger.info("done stage (collecting machine ids)...")
 
-    //statusConsole.displayProgress(statusInfo)
-    //Utils.displayDone(stage, "get machine ids", start, count, "triples", idMap.length, "machine ids")
-    idMap = midToIdMapBuilder.getMidToIdMap
+    statusConsole.displayDone(statusInfo)
 
+    // TODO: add timing measure
+    //idMap = midToIdMapBuilder.getMidToIdMap
   }
 
+
+  // TODO: Unneeded step, leaving for timing check, add to previous step with timing measure
   def persistIdMap = {
     logger.info("starting persisting the id map...")
-    //idMap.done // sorts id map, etc.
-    // TODO persistIdMap
+    idMap = midToIdMapBuilder.getMidToIdMap
     logger.info("done persisting the id map...")
   }
 
   def createNodes = {
+
+    val statusInfo = createStatusInfo(stage, "collecting machine ids")
+
     logger.info("starting creating the nodes...")
-    //stage += 1
+    stage += 1
     val start = System.currentTimeMillis()
     (0 until idMap.length).foreach { i =>
       batchInserter.createNode(i, Map[String,java.lang.Object]("mid" -> mid2long.decode(idMap.midArray(i))).asJava, freebaseLabel)
-      //Utils.displayProgress(stage, "create nodes", start, idMap.length, "nodes", i, i, "nodes")
+      statusInfo.itemCountStatus(0).incCount
+      statusConsole.displayProgress(statusInfo)
     }
-    //Utils.displayDone(stage, "create nodes", start, idMap.length, "nodes", idMap.length, "nodes")
+    statusConsole.displayDone(statusInfo)
     logger.info("done creating the nodes...")
   }
 
   def createRelationshipsPass = {
+
+    val statusInfo = createStatusInfo(stage, "collecting machine ids")
+
     logger.info("starting create relationships pass...")
-    //stage += 1
+    stage += 1
     val rdfIterable = getRdfIterable(freebaseFile)
     var count = 0l
     var relationshipCount = 0l
@@ -145,15 +153,23 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
           }
         }
         count = count + 1
-        //Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, relationshipCount, "relationships")
+
+        statusInfo.itemCountStatus(0).incCount
+        statusConsole.displayProgress(statusInfo)
+
+      //Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, relationshipCount, "relationships")
     }
     logger.info("done create relationships pass...")
-    //Utils.displayDone(stage, "create relationships", start, count, "triples", relationshipCount, "relationships")
+
+    statusConsole.displayDone(statusInfo)
   }
 
   def createPropertiesPass = {
+
+    val statusInfo = createStatusInfo(stage, "collecting machine ids")
+
     logger.info("starting create properties pass...")
-    //stage += 1
+    stage += 1
     val rdfIterable = getRdfIterable(freebaseFile)
     var count = 0l
     var propertyCount = 0l
@@ -197,10 +213,11 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
         }
       }
       count = count + 1
-      //Utils.displayProgress(stage, "create properties", start, totalLines, "triples", count, propertyCount, "properties")
+      statusInfo.itemCountStatus(0).incCount
+      statusConsole.displayProgress(statusInfo)
     }
     logger.info("done create properties pass...")
-    //Utils.displayDone(stage, "create properties", start, count, "triples", propertyCount, "properties")
+    statusConsole.displayDone(statusInfo)
   }
 
   def sanitize(s:String) = {

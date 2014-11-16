@@ -1,7 +1,7 @@
 package com.elegantcoding.freebase2neo
 
 import java.util.Arrays
-import scala.collection.mutable.{ArrayBuffer, BitSet}
+import scala.collection.mutable.ArrayBuffer
 
 trait MidToIdMap {
   val midArray: Array[Long]
@@ -24,18 +24,10 @@ class MidToIdMapBuilder {
 
     def getMid(mid : String) : Int = {
 
-      println("getMid : " + mid)
-      println("getMid : mid2long.encode(mid) : " + mid2long.encode(mid))
-      println("getMid : get(mid2long.encode(mid)) : " + get(mid2long.encode(mid)))
-
       get(mid2long.encode(mid))
     }
 
     def length = midArray.length
-
-    //  def length:Int = {
-    //    length
-    //  }
   }
 
   var midArrayBuffer = ArrayBuffer[Long]()
@@ -46,36 +38,14 @@ class MidToIdMapBuilder {
   }
 
   def put(mid:Long) = {
+
     midArrayBuffer += mid
     currentIndex += 1
   }
 
-//  def containsMid(mid:String) = {
-//    contains(mid2long.encode(mid))
-//  }
-//
-//
-//
-//  def contains(mid:Long):Boolean = {
-//    get(mid) >= 0
-//  }
-
-  // convert ArrayBuffer to Array and sort
   def getMidToIdMap : MidToIdMap = {
 
-    //scala.util.Sorting.stableSort()
-
-    //var midArray = scala.util.Sorting.stableSort(midArrayBuffer.toList)
     var midArray = scala.util.Sorting.stableSort(midArrayBuffer.groupBy{x => x}.values.map(_.head).toList)
-
-    //var midArray = scala.util.Sorting.stableSort(midArrayBuffer).groupBy{x => x}.map{_._2.head}.toArray
-    //var midArray = scala.util.Sorting.stableSort(midArrayBuffer).toArray
-
-    println("midArray:")
-    println("midArray.length" + midArray.length)
-    midArray.foreach{ println(_) }
-
-
     new MidToIdMapImpl(midArray)
   }
 }

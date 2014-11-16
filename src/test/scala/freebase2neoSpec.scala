@@ -39,15 +39,8 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
     //freebase2neo.batchInserter = createInserter
     // freebase2neo.idMap = new IdMap(21054)
 
-    println("mid2long.encode(05ljtx) = " + mid2long.encode("05ljtx"))
-
     freebase2neo.getIdsPass
     freebase2neo.persistIdMap
-
-    println("freebase2neo.idMap.getMid(5849916)" + freebase2neo.idMap.get(5849916))
-    println("freebase2neo.idMap.getMid(\"05ljtx\")" + freebase2neo.idMap.getMid("05ljtx"))
-    println("freebase2neo.idMap.getMid(\"05ljtx\").getClass.getName" + freebase2neo.idMap.getMid("05ljtx").getClass.getName)
-
     freebase2neo.idMap.getMid("05ljtx") should be (1431)
     freebase2neo.shutdown
   }

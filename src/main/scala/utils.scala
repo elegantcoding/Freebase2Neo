@@ -3,10 +3,15 @@ package com.elegantcoding.freebase2neo
 import com.googlecode.lanterna.TerminalFacade
 import java.nio.charset.Charset
 
-
 case class MovingAverage(name: String, interval: Long)
 
-class ItemCountStatus(val name : String, private val movingAveragesParam : Seq[MovingAverage] = Nil) {
+case class DisplayUnit(name: String, unit: Long)
+
+object DisplayUnitMillion extends DisplayUnit("Million", 1000000l)
+
+class ItemCountStatus(val name : String,
+                      private val movingAveragesParam : Seq[MovingAverage] = Nil,
+                      val displayUnit : DisplayUnit = DisplayUnitMillion) {
 
   val startTime = System.currentTimeMillis
   var count : Long = 0
@@ -14,9 +19,11 @@ class ItemCountStatus(val name : String, private val movingAveragesParam : Seq[M
 
   def incCount = count = count + 1
 
+  def countInUnit = count / displayUnit.unit
+
   // There must be a better way to do this: have this be both publicly accessible and an inner class
 
-  val movingAverages = movingAveragesParam.map{x => new MovingAverageImpl(x) }
+  val movingAverages = movingAveragesParam.map{ new MovingAverageImpl(_) }
 
   class MovingAverageImpl (private val movingAverage : MovingAverage) {
 
@@ -96,11 +103,11 @@ class StatusInfo(val stage : Int,
 }
 
 
-class StatusConsole {
+class StatusConsole(private val displayInterval : Long = 1000) {
 
-  var lastTime = System.currentTimeMillis
+  var lastDisplayTime = System.currentTimeMillis
 
-  val ONE_MILLION = 1000000l
+  var ONE_MILLION = 1000000l
 
   var line = 2
   var col = 10
@@ -122,8 +129,16 @@ class StatusConsole {
     putString("press ctrl-C to quit")
   }
 
-  def displayProgress(statusInfo : StatusInfo) = {
-      //logStatus(statusInfo.startTime, lines)
+  def displayProgress(statusInfo : StatusInfo) : Unit = {
+
+      if((System.currentTimeMillis - displayInterval) <=  lastDisplayTime)
+        return
+
+    lastDisplayTime = System.currentTimeMillis
+
+    //logStatus(statusInfo.startTime, lines)
+
+
       line = statusInfo.stage * 4 - 2
       col = 10
       putString("stage %d (%s)...                               ".format(statusInfo.stage, statusInfo.stageDescription))
@@ -131,13 +146,13 @@ class StatusConsole {
 
       statusInfo.itemCountStatus.foreach((itemCountStatus) => {
 
-        putString("%.3fM %s processed                             ".format(itemCountStatus.count / ONE_MILLION.toDouble, itemCountStatus.name))
-        putString("%.3fM %s/sec (cumulative average)              ".format(itemCountStatus.avgRate / ONE_MILLION, itemCountStatus.name))
+        putString("%.3f %s %s processed                            ".format(itemCountStatus.countInUnit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
+        putString("%.3f %s %s/sec (cumulative average)             ".format(itemCountStatus.avgRate / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
         putString("%d %s                                          ".format(itemCountStatus.count, itemCountStatus.name))
 
         itemCountStatus.movingAverages.foreach( (movingAverage) =>
 
-          putString("%.3fM %s/sec %s        ".format(movingAverage.latestMovingAvg / ONE_MILLION, itemCountStatus.name, movingAverage.name))
+          putString("%.3f %s %s/sec %s        ".format(movingAverage.latestMovingAvg / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name, movingAverage.name))
         )
       })
 //      putString("%d %s                                          ".format(itemCount, itemDesc))
@@ -145,15 +160,22 @@ class StatusConsole {
       //putString("%2.2f%% complete (approx.)                     ".format(lines.toDouble / total * 100))
       //putString("%s time remaining (approx.)                    ".format(formatTime(((total - lines) / longMovingAvg * 1000).toLong)))
   }
-//
-//  def displayDone(total: Long, totalDesc:String, itemCount:Long, itemDesc:String) = {
-//    line = stage * 4 - 2
-//    col = 10
-//    putString("stage %d (%s) complete. elapsed: %s                                   ".format(stage, desc, formatTime(elapsed)))
-//    putString("%d %s processed, %d %s                                                ".format(total, totalDesc, itemCount, itemDesc))
-//    putString("%.3fM %s/sec (average); %.3fM %s/sec (average)                        ".format(avgRate / ONE_MILLION, totalDesc, itemAvg / ONE_MILLION, itemDesc))
-//    putString("                                                                      ")
-//  }
+
+  def displayDone(statusInfo : StatusInfo) = {
+
+    line = statusInfo.stage * 4 - 2
+    col = 10
+    putString("stage %d (%s) complete. elapsed: %s                                   ".format(statusInfo.stage, statusInfo.stageDescription, statusInfo.elapsedString))
+
+    statusInfo.itemCountStatus.foreach((itemCountStatus) => {
+
+      putString("%d %s processed,                                                      ".format(itemCountStatus.count, itemCountStatus.name))
+      //putString("%.3f %s %s/sec (average); %.3fM %s/sec (average)                       ".format(itemCountStatus.avgRate / ONE_MILLION, itemCountStatus.displayUnit.name, itemCountStatus.name))
+      putString("%.3f %s %s/sec (average);                                             ".format(itemCountStatus.avgRate / ONE_MILLION, itemCountStatus.displayUnit.name, itemCountStatus.name))
+    })
+
+    putString("                                                                      ")
+  }
 
   //def cleanupTerminal = terminal.exitPrivateMode()
 
@@ -173,7 +195,7 @@ class StatusConsole {
       // logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
       //   "; last 10M: " + formatTime(curTime - lastTime) +
       //   "; process elapsed: " + formatTime(curTime - processStartTime))
-      lastTime = curTime
+      //lastTime = curTime
     }
   }
 
