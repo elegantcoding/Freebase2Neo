@@ -31,7 +31,7 @@ package com.elegantcoding.freebase2neo
 
 import java.util.zip.GZIPInputStream
 import java.io.FileInputStream
-import com.elegantcoding.rdfprocessor.rdftriple.types.{RdfTupleFilter, RdfTriple}
+import com.elegantcoding.rdfprocessor.rdftriple.types.{RdfTripleFilter, RdfTupleFilter, RdfTriple}
 
 import collection.JavaConverters._
 
@@ -67,13 +67,9 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
                    )
     )
 
-
-
-
-      def extractId(str:String):Long = {
+  def extractId(str:String):Long = {
     mid2long.encode(str.substring(MID_PREFIX.length, str.length()-1))
   }
-
 
   var batchInserter = inserter
 
@@ -96,6 +92,10 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
   val midToIdMapBuilder = MidToIdMapBuilder()
 
+  val  getIdsPassFilter : RdfTripleFilter = (triple : RdfTriple) => {
+    settings.nodeTypePredicates.contains(triple.predicateString)
+  }
+
 
   def getIdsPass = {
     logger.info("starting stage (collecting machine ids)...")
@@ -110,7 +110,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     //var count = 0l
     //val start = System.currentTimeMillis
     rdfIterable.foreach { triple =>
-      if (settings.nodeTypePredicates.contains(triple.predicateString)) {
+      if (getIdsPassFilter(triple)) {
         midToIdMapBuilder.put(extractId(triple.objectString))
       }
 
@@ -136,7 +136,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
   def createNodes = {
 
-    val statusInfo = createStatusInfo(stage, "collecting machine ids")
+    val statusInfo = createStatusInfo(stage, "creating the nodes")
 
     logger.info("starting creating the nodes...")
     stage += 1
@@ -150,9 +150,14 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     logger.info("done creating the nodes...")
   }
 
+  val createRelationshipsPassFilter : RdfTripleFilter = (triple : RdfTriple) => {
+
+    !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)
+  }
+
   def createRelationshipsPass = {
 
-    val statusInfo = createStatusInfo(stage, "collecting machine ids")
+    val statusInfo = createStatusInfo(stage, "create relationships pass")
 
     logger.info("starting create relationships pass...")
     stage += 1
@@ -170,7 +175,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
             // if object is an mid (this is a relationship) and
             // if predicate isn't ignored
             if (triple.objectString.startsWith(MID_PREFIX) &&
-              !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)) {
+                createRelationshipsPassFilter(triple)) {
               val objMid = extractId(triple.objectString)
               val objNodeId: Long = idMap.get(objMid)
               if (objNodeId >= 0) {
@@ -193,9 +198,19 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     statusConsole.displayDone(statusInfo)
   }
 
+  val createPropertiesPassFilter : RdfTripleFilter = (triple : RdfTriple ) => {
+    !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString) &&
+      (settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) ||
+        !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
+      (endsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.endsWithSeq) ||
+        startsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.startsWithSeq) ||
+        (!startsWithAny(triple.objectString, settings.filters.objectFilter.blacklist.startsWithSeq) &&
+          !containsAny(triple.objectString, settings.filters.objectFilter.blacklist.containsSeq)))
+  }
+
   def createPropertiesPass = {
 
-    val statusInfo = createStatusInfo(stage, "collecting machine ids")
+    val statusInfo = createStatusInfo(stage, "create properties pass")
 
     logger.info("starting create properties pass...")
     stage += 1
@@ -211,13 +226,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
         if (nodeId >= 0) {
               // create property
               if(!triple.objectString.startsWith(MID_PREFIX) &&  // if object is an mid (this is a relationship)
-                 !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString) &&
-                 (settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) ||
-                  !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
-                 (endsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.endsWithSeq) ||
-                  startsWithAny(triple.objectString, settings.filters.objectFilter.whitelist.startsWithSeq) ||
-                 (!startsWithAny(triple.objectString, settings.filters.objectFilter.blacklist.startsWithSeq) &&
-                  !containsAny(triple.objectString, settings.filters.objectFilter.blacklist.containsSeq)))) {
+                createPropertiesPassFilter(triple)) {
                 val key = sanitize(triple.predicateString)
                 // if property exists, convert it to an array of properties
                 // if it's already an array, append to the array
