@@ -60,7 +60,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     new StatusInfo(stage,
                    stageDescription,
                    Seq[ItemCountStatus](
-                      new ItemCountStatus("line", Seq[MovingAverage](
+                      new ItemCountStatus("lines", Seq[MovingAverage](
                         new MovingAverage("(10 second moving average)",(10 * 1000)),
                         new MovingAverage("(10 min moving average)", (10 * 60 * 1000)))
                       )
@@ -82,6 +82,8 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
 
   def createDb = {
+    logger.info("source: " + settings.gzippedNTripleFile)
+    logger.info("db: " + settings.outputGraphPath)
     getIdsPass
     persistIdMap
     createNodes
@@ -129,6 +131,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
   // TODO: Unneeded step, leaving for timing check, add to previous step with timing measure
   def persistIdMap = {
+    stage += 1
     logger.info("starting persisting the id map...")
     idMap = midToIdMapBuilder.getMidToIdMap
     logger.info("done persisting the id map...")
@@ -198,7 +201,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     statusConsole.displayDone(statusInfo)
   }
 
-  val createPropertiesPassFilter : RdfTripleFilter = (triple : RdfTriple ) => {
+  val createPropertiesPassFilter : RdfTripleFilter = (triple : RdfTriple) => {
     !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString) &&
       (settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) ||
         !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
