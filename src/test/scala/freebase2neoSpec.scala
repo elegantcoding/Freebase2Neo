@@ -11,21 +11,29 @@ import com.typesafe.scalalogging.slf4j.Logger
 
 class freebase2neoSpec extends FlatSpec with ShouldMatchers {
 
-  val dbpath = "target/testdb"
+  var log = Logger(LoggerFactory.getLogger("freebase2neoSpec"))
+
+  val settings = new Settings("freebase2neo.test.json")
+
+  log.info("source: " + settings.gzippedNTripleFile)
+  log.info("db: " + settings.outputGraphPath)
+
+  log.info("settings.nodeStoreMappedMemory : " + settings.nodeStoreMappedMemory)
+  log.info("settings.relationshipStoreMappedMemory : " + settings.relationshipStoreMappedMemory)
+  log.info("settings.propertyStoreMappedMemory : " + settings.propertyStoreMappedMemory)
+  log.info("settings.propertyStoreStrings : " + settings.propertyStoreStrings)
 
   def createInserter = BatchInserters.inserter(
-    dbpath,
+    settings.outputGraphPath,
     Map[String,String](
-      "neostore.nodestore.db.mapped_memory" -> "64M",
-      "neostore.relationshipstore.db.mapped_memory" -> "128M",
-      "neostore.propertystore.db.mapped_memory" -> "128M",
-      "neostore.propertystore.db.strings" -> "128M"
+      "neostore.nodestore.db.mapped_memory" ->         settings.nodeStoreMappedMemory,
+      "neostore.relationshipstore.db.mapped_memory" -> settings.relationshipStoreMappedMemory,
+      "neostore.propertystore.db.mapped_memory" ->     settings.propertyStoreMappedMemory,
+      "neostore.propertystore.db.strings" ->           settings.propertyStoreStrings
     ).asJava
   )
 
-  val settings = new Settings
-
-  FileUtils.deleteDirectory(new File(dbpath))
+  FileUtils.deleteDirectory(new File(settings.outputGraphPath))
 
   var freebase2neo = new Freebase2Neo(createInserter, settings)
   freebase2neo.freebaseFile = "subset.ntriple.gz"
@@ -46,12 +54,12 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "be able to create the nodes" in {
-    FileUtils.deleteDirectory(new File(dbpath))
+    FileUtils.deleteDirectory(new File(settings.outputGraphPath))
     freebase2neo.batchInserter = createInserter
     freebase2neo.createNodes
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
-    val db = new GraphDatabaseFactory().newEmbeddedDatabase(dbpath)
+    val db = new GraphDatabaseFactory().newEmbeddedDatabase(settings.outputGraphPath)
     val tx = db.beginTx
     try {
       val n = db.getNodeById(0l)
@@ -72,7 +80,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
     freebase2neo.createRelationshipsPass
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
-    val db = new GraphDatabaseFactory().newEmbeddedDatabase(dbpath)
+    val db = new GraphDatabaseFactory().newEmbeddedDatabase(settings.outputGraphPath)
     val tx = db.beginTx
     var found = false
     try {
@@ -100,7 +108,7 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
     freebase2neo.createPropertiesPass
     freebase2neo.shutdown
     // confirm nodes are created (check one high and low)
-    val db = new GraphDatabaseFactory().newEmbeddedDatabase(dbpath)
+    val db = new GraphDatabaseFactory().newEmbeddedDatabase(settings.outputGraphPath)
     val tx = db.beginTx
     try {
       val n = db.getNodeById(4l) // Apache HTTP Server

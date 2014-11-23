@@ -1,11 +1,11 @@
 {
-  "outputGraphPath":"C:/rdf/rdf2neo-db",
-  "gzippedNTripleFile":"C:/rdf/freebase-rdf-2014-10-12-00-00.gz",
+  "outputGraphPath":"target/testdb",
+  "gzippedNTripleFile":"subset.ntriple.gz",
 
-  "nodeStoreMappedMemory" : "1G",
-  "relationshipStoreMappedMemory" : "7G",
-  "propertyStoreMappedMemory" : "7G",
-  "propertyStoreStrings" : "7G",
+  "nodeStoreMappedMemory" : "64M",
+  "relationshipStoreMappedMemory" : "128M",
+  "propertyStoreMappedMemory" : "128M",
+  "propertyStoreStrings" : "128M",
 
   "errorLogFile" : "errorLog.txt",
   "statusLogFile" : "statusLog.txt",

@@ -35,9 +35,11 @@ import com.elegantcoding.rdfprocessor.rdftriple.types.RdfTriple
 import collection.JavaConverters._
 import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions, ConfigSyntax}
 
-class Settings {
+//TODO: Convert this to YAML
+
+class Settings(val fileName : String = "freebase2neo") {
   val config = ConfigFactory.load(
-                 "freebase2neo",
+                 fileName,
                  ConfigParseOptions.defaults()
                    .setSyntax(ConfigSyntax.JSON)
                    .setAllowMissing(false),
@@ -46,6 +48,12 @@ class Settings {
 
   val freebaseRdfPrefix = config.getString("freebaseRdfPrefix")
   val outputGraphPath = config.getString("outputGraphPath")
+
+  val nodeStoreMappedMemory = config.getString("nodeStoreMappedMemory")
+  val relationshipStoreMappedMemory = config.getString("relationshipStoreMappedMemory")
+  val propertyStoreMappedMemory = config.getString("propertyStoreMappedMemory")
+  val propertyStoreStrings = config.getString("propertyStoreStrings")
+
   val gzippedNTripleFile = config.getString("gzippedNTripleFile")
   val errorLogFile = config.getString("errorLogFile")
   val statusLogFile = config.getString("statusLogFile")

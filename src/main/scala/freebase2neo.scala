@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.slf4j.Logger
 
 class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
-  var logger = Logger(LoggerFactory.getLogger("freebase2neo"))
+  var log = Logger(LoggerFactory.getLogger("freebase2neo"))
   var idMap : MidToIdMap = MidToIdMapBuilder().getMidToIdMap; // create empty one for now
   var freebaseLabel = DynamicLabel.label("Freebase")
   var stage:Int = 0
@@ -82,8 +82,14 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
 
   def createDb = {
-    logger.info("source: " + settings.gzippedNTripleFile)
-    logger.info("db: " + settings.outputGraphPath)
+    log.info("source: " + settings.gzippedNTripleFile)
+    log.info("db: " + settings.outputGraphPath)
+
+    log.info("settings.nodeStoreMappedMemory : " + settings.nodeStoreMappedMemory)
+    log.info("settings.relationshipStoreMappedMemory : " + settings.relationshipStoreMappedMemory)
+    log.info("settings.propertyStoreMappedMemory : " + settings.propertyStoreMappedMemory)
+    log.info("settings.propertyStoreStrings : " + settings.propertyStoreStrings)
+
     getIdsPass
     persistIdMap
     createNodes
@@ -100,7 +106,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
 
   def getIdsPass = {
-    logger.info("starting stage (collecting machine ids)...")
+    log.info("starting stage (collecting machine ids)...")
 
     stage += 1
 
@@ -120,7 +126,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
       statusConsole.displayProgress(statusInfo)
     }
-    logger.info("done stage (collecting machine ids)...")
+    log.info("done stage (collecting machine ids)...")
 
     statusConsole.displayDone(statusInfo)
 
@@ -132,16 +138,16 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
   // TODO: Unneeded step, leaving for timing check, add to previous step with timing measure
   def persistIdMap = {
     stage += 1
-    logger.info("starting persisting the id map...")
+    log.info("starting persisting the id map...")
     idMap = midToIdMapBuilder.getMidToIdMap
-    logger.info("done persisting the id map...")
+    log.info("done persisting the id map...")
   }
 
   def createNodes = {
 
     val statusInfo = createStatusInfo(stage, "creating the nodes")
 
-    logger.info("starting creating the nodes...")
+    log.info("starting creating the nodes...")
     stage += 1
     val start = System.currentTimeMillis()
     (0 until idMap.length).foreach { i =>
@@ -150,7 +156,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
       statusConsole.displayProgress(statusInfo)
     }
     statusConsole.displayDone(statusInfo)
-    logger.info("done creating the nodes...")
+    log.info("done creating the nodes...")
   }
 
   val createRelationshipsPassFilter : RdfTripleFilter = (triple : RdfTriple) => {
@@ -162,7 +168,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
     val statusInfo = createStatusInfo(stage, "create relationships pass")
 
-    logger.info("starting create relationships pass...")
+    log.info("starting create relationships pass...")
     stage += 1
     val rdfIterable = getRdfIterable(freebaseFile)
     var count = 0l
@@ -196,7 +202,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
       //Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, relationshipCount, "relationships")
     }
-    logger.info("done create relationships pass...")
+    log.info("done create relationships pass...")
 
     statusConsole.displayDone(statusInfo)
   }
@@ -215,7 +221,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
 
     val statusInfo = createStatusInfo(stage, "create properties pass")
 
-    logger.info("starting create properties pass...")
+    log.info("starting create properties pass...")
     stage += 1
     val rdfIterable = getRdfIterable(freebaseFile)
     var count = 0l
@@ -257,7 +263,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
       statusInfo.itemCountStatus(0).incCount
       statusConsole.displayProgress(statusInfo)
     }
-    logger.info("done create properties pass...")
+    log.info("done create properties pass...")
     statusConsole.displayDone(statusInfo)
   }
 
