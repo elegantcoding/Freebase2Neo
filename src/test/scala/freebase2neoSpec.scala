@@ -48,7 +48,6 @@ class freebase2neoSpec extends FlatSpec with ShouldMatchers {
     // freebase2neo.idMap = new IdMap(21054)
 
     freebase2neo.getIdsPass
-    freebase2neo.persistIdMap
     freebase2neo.idMap.getMid("05ljtx") should be (1431)
     freebase2neo.shutdown
   }

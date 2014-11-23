@@ -1,6 +1,7 @@
 {
   "outputGraphPath":"C:/rdf/rdf2neo-db",
   "gzippedNTripleFile":"C:/rdf/freebase-rdf-2014-10-12-00-00.gz",
+  "gzipInputBufferSize" : "1048576",
 
   "nodeStoreMappedMemory" : "1G",
   "relationshipStoreMappedMemory" : "7G",

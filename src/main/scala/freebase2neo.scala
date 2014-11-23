@@ -1,9 +1,9 @@
 /**
- *    _____              _                    ____  _   _
- *   |  ___| __ ___  ___| |__   __ _ ___  ___|___ \| \ | | ___  ___
- *   | |_ | '__/ _ \/ _ \ '_ \ / _` / __|/ _ \ __) |  \| |/ _ \/ _ \
- *   |  _|| | |  __/  __/ |_) | (_| \__ \  __// __/| |\  |  __/ (_) |
- *   |_|  |_|  \___|\___|_.__/ \__,_|___/\___|_____|_| \_|\___|\___/
+ * _____              _                    ____  _   _
+ * |  ___| __ ___  ___| |__   __ _ ___  ___|___ \| \ | | ___  ___
+ * | |_ | '__/ _ \/ _ \ '_ \ / _` / __|/ _ \ __) |  \| |/ _ \/ _ \
+ * |  _|| | |  __/  __/ |_) | (_| \__ \  __// __/| |\  |  __/ (_) |
+ * |_|  |_|  \___|\___|_.__/ \__,_|___/\___|_____|_| \_|\___|\___/
  *
  *
  * Copyright (c) 2013-2014
@@ -42,11 +42,12 @@ import com.elegantcoding.rdfprocessor.NTripleIterable
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.slf4j.Logger
 
-class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
+class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
   var log = Logger(LoggerFactory.getLogger("freebase2neo"))
-  var idMap : MidToIdMap = MidToIdMapBuilder().getMidToIdMap; // create empty one for now
+  var idMap : MidToIdMap = MidToIdMapBuilder().getMidToIdMap;
+  // create empty one for now
   var freebaseLabel = DynamicLabel.label("Freebase")
-  var stage:Int = 0
+  var stage: Int = 0
   //var totalLines:Long = 0
   val MID_PREFIX = "<http://rdf.freebase.com/ns/m."
 
@@ -56,29 +57,27 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
   val statusConsole = new StatusConsole();
 
 
-  def createStatusInfo(stage : Int, stageDescription : String) =
+  def createStatusInfo(stage: Int, stageDescription: String) =
     new StatusInfo(stage,
-                   stageDescription,
-                   Seq[ItemCountStatus](
-                      new ItemCountStatus("lines", Seq[MovingAverage](
-                        new MovingAverage("(10 second moving average)",(10 * 1000)),
-                        new MovingAverage("(10 min moving average)", (10 * 60 * 1000)))
-                      )
-                   )
+      stageDescription,
+      Seq[ItemCountStatus](
+        new ItemCountStatus("lines", Seq[MovingAverage](
+          new MovingAverage("(10 second moving average)", (10 * 1000)),
+          new MovingAverage("(10 min moving average)", (10 * 60 * 1000)))
+        )
+      )
     )
 
-  def extractId(str:String):Long = {
-    mid2long.encode(str.substring(MID_PREFIX.length, str.length()-1))
+  def extractId(str: String): Long = {
+    mid2long.encode(str.substring(MID_PREFIX.length, str.length() - 1))
   }
 
   var batchInserter = inserter
 
-  //TODO add 65536*16 to Settings
-
-    def getRdfIterable(filename : String, rdfTripleFilterOption : Option[RdfTupleFilter[RdfTriple]] = None) =  rdfTripleFilterOption match {
-      case None => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16))
-      case Some(rdfTripleFilter) => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), 65536 * 16), rdfTripleFilter)
-    }
+  def getRdfIterable(filename: String, rdfTripleFilterOption: Option[RdfTupleFilter[RdfTriple]] = None) = rdfTripleFilterOption match {
+    case None => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), settings.gzipInputBufferSize))
+    case Some(rdfTripleFilter) => NTripleIterable(new GZIPInputStream(new FileInputStream(filename), settings.gzipInputBufferSize), rdfTripleFilter)
+  }
 
 
   def createDb = {
@@ -91,16 +90,14 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     log.info("settings.propertyStoreStrings : " + settings.propertyStoreStrings)
 
     getIdsPass
-    persistIdMap
     createNodes
     createRelationshipsPass
     createPropertiesPass
     shutdown
   }
 
-  val midToIdMapBuilder = MidToIdMapBuilder()
 
-  val  getIdsPassFilter : RdfTripleFilter = (triple : RdfTriple) => {
+  val getIdsPassFilter: RdfTripleFilter = (triple: RdfTriple) => {
     settings.nodeTypePredicates.contains(triple.predicateString)
   }
 
@@ -108,11 +105,13 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
   def getIdsPass = {
     log.info("starting stage (collecting machine ids)...")
 
+    val midToIdMapBuilder = MidToIdMapBuilder()
+
     stage += 1
 
     val statusInfo = createStatusInfo(stage, "collecting machine ids")
 
-//    val midToIdMapBuilder = MidToIdMapBuilder()
+    //    val midToIdMapBuilder = MidToIdMapBuilder()
 
     val rdfIterable = getRdfIterable(freebaseFile)
     //var count = 0l
@@ -131,16 +130,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     statusConsole.displayDone(statusInfo)
 
     // TODO: add timing measure
-    //idMap = midToIdMapBuilder.getMidToIdMap
-  }
-
-
-  // TODO: Unneeded step, leaving for timing check, add to previous step with timing measure
-  def persistIdMap = {
-    stage += 1
-    log.info("starting persisting the id map...")
     idMap = midToIdMapBuilder.getMidToIdMap
-    log.info("done persisting the id map...")
   }
 
   def createNodes = {
@@ -151,7 +141,7 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     stage += 1
     val start = System.currentTimeMillis()
     (0 until idMap.length).foreach { i =>
-      batchInserter.createNode(i, Map[String,java.lang.Object]("mid" -> mid2long.decode(idMap.midArray(i))).asJava, freebaseLabel)
+      batchInserter.createNode(i, Map[String, java.lang.Object]("mid" -> mid2long.decode(idMap.midArray(i))).asJava, freebaseLabel)
       statusInfo.itemCountStatus(0).incCount
       statusConsole.displayProgress(statusInfo)
     }
@@ -159,12 +149,37 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     log.info("done creating the nodes...")
   }
 
-  val createRelationshipsPassFilter : RdfTripleFilter = (triple : RdfTriple) => {
+  val createRelationshipsPassFilter: RdfTripleFilter = (triple: RdfTriple) => {
 
     !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)
   }
 
-  def createRelationshipsPass = {
+  def createRelationship(triple: RdfTriple) = {
+    // if subject is an mid
+    if (triple.subjectString.startsWith(MID_PREFIX)) {
+      val mid = extractId(triple.subjectString)
+      val nodeId: Long = idMap.get(mid)
+      if (nodeId >= 0) {
+        // if object is an mid (this is a relationship) and
+        // if predicate isn't ignored
+        if (triple.objectString.startsWith(MID_PREFIX) &&
+          createRelationshipsPassFilter(triple)) {
+          val objMid = extractId(triple.objectString)
+          val objNodeId: Long = idMap.get(objMid)
+          if (objNodeId >= 0) {
+            // create relationship
+            batchInserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
+            1
+          }
+        }
+      }
+    }
+    0
+  }
+
+  def createRelationshipsPass() = createRelationships(createRelationship)
+
+  def createRelationships(createRelationshipFunction: (RdfTriple) => Int) = {
 
     val statusInfo = createStatusInfo(stage, "create relationships pass")
 
@@ -174,40 +189,23 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     var count = 0l
     var relationshipCount = 0l
     val start = System.currentTimeMillis
-    rdfIterable.foreach {
-      triple =>
-      // if subject is an mid
-        if (triple.subjectString.startsWith(MID_PREFIX)) {
-          val mid = extractId(triple.subjectString)
-          val nodeId: Long = idMap.get(mid)
-          if (nodeId >= 0) {
-            // if object is an mid (this is a relationship) and
-            // if predicate isn't ignored
-            if (triple.objectString.startsWith(MID_PREFIX) &&
-                createRelationshipsPassFilter(triple)) {
-              val objMid = extractId(triple.objectString)
-              val objNodeId: Long = idMap.get(objMid)
-              if (objNodeId >= 0) {
-                // create relationship
-                batchInserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
-                relationshipCount += 1
-              }
-            }
-          }
-        }
-        count = count + 1
+    rdfIterable.foreach((triple) => {
 
-        statusInfo.itemCountStatus(0).incCount
-        statusConsole.displayProgress(statusInfo)
+      relationshipCount = relationshipCount + createRelationshipFunction(triple)
+
+      count = count + 1
+
+      statusInfo.itemCountStatus(0).incCount
+      statusConsole.displayProgress(statusInfo)
 
       //Utils.displayProgress(stage, "create relationships", start, totalLines, "triples", count, relationshipCount, "relationships")
-    }
+    })
     log.info("done create relationships pass...")
 
     statusConsole.displayDone(statusInfo)
   }
 
-  val createPropertiesPassFilter : RdfTripleFilter = (triple : RdfTriple) => {
+  val createPropertiesPassFilter: RdfTripleFilter = (triple: RdfTriple) => {
     !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString) &&
       (settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) ||
         !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
@@ -217,7 +215,48 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
           !containsAny(triple.objectString, settings.filters.objectFilter.blacklist.containsSeq)))
   }
 
-  def createPropertiesPass = {
+  def createProperty(triple: RdfTriple) = {
+
+    // if subject is an mid
+    if (triple.subjectString.startsWith(MID_PREFIX)) {
+      val mid = extractId(triple.subjectString)
+      val nodeId: Long = idMap.get(mid)
+      if (nodeId >= 0) {
+        // create property
+        if (triple.objectString.startsWith(MID_PREFIX)) {
+        } else {
+          // if object is an mid (this is a relationship)
+          if (createPropertiesPassFilter(triple)) {
+            val key = sanitize(triple.predicateString)
+            // if property exists, convert it to an array of properties
+            // if it's already an array, append to the array
+            if (batchInserter.nodeHasProperty(nodeId, key)) {
+              var prop = batchInserter.getNodeProperties(nodeId).get(key)
+              batchInserter.removeNodeProperty(nodeId, key)
+              prop match {
+                case prop: Array[String] => {
+                  batchInserter.setNodeProperty(nodeId, key, prop :+ triple.objectString)
+                }
+                case _ => {
+                  batchInserter.setNodeProperty(nodeId, key, Array[String](prop.toString) :+ triple.objectString)
+                }
+              }
+            } else {
+              batchInserter.setNodeProperty(nodeId, key, triple.objectString)
+            }
+            1
+          }
+        }
+      } else {
+        // TODO handle labels?
+      }
+    }
+    0
+  }
+
+  def createPropertiesPass() = createProperties(createProperty)
+
+  def createProperties(createRelationshipFunction: (RdfTriple) => Int) = {
 
     val statusInfo = createStatusInfo(stage, "create properties pass")
 
@@ -227,69 +266,48 @@ class Freebase2Neo(inserter : BatchInserter, settings:Settings) {
     var count = 0l
     var propertyCount = 0l
     val start = System.currentTimeMillis
-    rdfIterable.foreach { triple =>
-    // if subject is an mid
-      if (triple.subjectString.startsWith(MID_PREFIX)) {
-        val mid = extractId(triple.subjectString)
-        val nodeId: Long = idMap.get(mid)
-        if (nodeId >= 0) {
-              // create property
-              if(!triple.objectString.startsWith(MID_PREFIX) &&  // if object is an mid (this is a relationship)
-                createPropertiesPassFilter(triple)) {
-                val key = sanitize(triple.predicateString)
-                // if property exists, convert it to an array of properties
-                // if it's already an array, append to the array
-                if (batchInserter.nodeHasProperty(nodeId, key)) {
-                  var prop = batchInserter.getNodeProperties(nodeId).get(key)
-                  batchInserter.removeNodeProperty(nodeId, key)
-                  prop match {
-                    case prop: Array[String] => {
-                      batchInserter.setNodeProperty(nodeId, key, prop :+ triple.objectString)
-                    }
-                    case _ => {
-                      batchInserter.setNodeProperty(nodeId, key, Array[String](prop.toString) :+ triple.objectString)
-                    }
-                  }
-                } else {
-                  batchInserter.setNodeProperty(nodeId, key, triple.objectString)
-                }
-                propertyCount += 1
-          }
-        } else {
-          // TODO handle labels?
-        }
-      }
+    rdfIterable.foreach { triple => {
+
+      createProperty(triple)
+
       count = count + 1
       statusInfo.itemCountStatus(0).incCount
       statusConsole.displayProgress(statusInfo)
-    }
+    }}
+
     log.info("done create properties pass...")
     statusConsole.displayDone(statusInfo)
   }
 
-  def sanitize(s:String) = {
+  def sanitize(s: String) = {
     val s2 = s.replaceAllLiterally(settings.freebaseRdfPrefix, "")
       .replaceAllLiterally("<http://www.w3.org/1999/02/", "")
       .replaceAllLiterally("<http://www.w3.org/2000/01/", "")
       .replaceAllLiterally("<http://rdf.freebase.com/key/", "")
-    s2.substring(0,s2.length-1)
+    s2.substring(0, s2.length - 1)
   }
 
-  def startsWithAny(s:String, l:Seq[String]):Boolean = {
-    l.foreach(v => if(s.startsWith(v)) {return true})
+  def startsWithAny(s: String, l: Seq[String]): Boolean = {
+    l.foreach(v => if (s.startsWith(v)) {
+      return true
+    })
     return false
   }
 
-  def endsWithAny(s:String, l:Seq[String]):Boolean = {
-    l.foreach(v => if(s.endsWith(v)) {return true})
+  def endsWithAny(s: String, l: Seq[String]): Boolean = {
+    l.foreach(v => if (s.endsWith(v)) {
+      return true
+    })
     return false
   }
 
-  def containsAny(s:String, l:Seq[String]):Boolean = {
-    l.foreach(v => if(s.contains(v)) {return true})
+  def containsAny(s: String, l: Seq[String]): Boolean = {
+    l.foreach(v => if (s.contains(v)) {
+      return true
+    })
     return false
   }
 
-  def shutdown =  batchInserter.shutdown
+  def shutdown = batchInserter.shutdown
 
 }

@@ -1,6 +1,7 @@
 {
   "outputGraphPath":"target/testdb",
   "gzippedNTripleFile":"subset.ntriple.gz",
+  "gzipInputBufferSize" : "1048576",
 
   "nodeStoreMappedMemory" : "64M",
   "relationshipStoreMappedMemory" : "128M",

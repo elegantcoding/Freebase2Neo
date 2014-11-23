@@ -55,6 +55,7 @@ class Settings(val fileName : String = "freebase2neo") {
   val propertyStoreStrings = config.getString("propertyStoreStrings")
 
   val gzippedNTripleFile = config.getString("gzippedNTripleFile")
+  val gzipInputBufferSize = config.getInt("gzipInputBufferSize")
   val errorLogFile = config.getString("errorLogFile")
   val statusLogFile = config.getString("statusLogFile")
   val nodeTypePredicates = getConfigList("nodeTypePredicates")
