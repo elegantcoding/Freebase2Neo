@@ -44,7 +44,7 @@ import com.typesafe.scalalogging.slf4j.Logger
 
 class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
   var log = Logger(LoggerFactory.getLogger("freebase2neo"))
-  var idMap : MidToIdMap = MidToIdMapBuilder().getMidToIdMap;
+  var idMap: MidToIdMap = MidToIdMapBuilder().getMidToIdMap;
   // create empty one for now
   var freebaseLabel = DynamicLabel.label("Freebase")
   var stage: Int = 0
@@ -155,25 +155,20 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
   }
 
   def createRelationship(triple: RdfTriple) = {
-    // if subject is an mid
-    if (triple.subjectString.startsWith(MID_PREFIX)) {
-      val mid = extractId(triple.subjectString)
-      val nodeId: Long = idMap.get(mid)
-      if (nodeId >= 0) {
-        // if object is an mid (this is a relationship) and
-        // if predicate isn't ignored
-        if (triple.objectString.startsWith(MID_PREFIX) &&
-          createRelationshipsPassFilter(triple)) {
-          val objMid = extractId(triple.objectString)
-          val objNodeId: Long = idMap.get(objMid)
-          if (objNodeId >= 0) {
-            // create relationship
-            batchInserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
-            1
-          }
-        }
+    val mid = extractId(triple.subjectString)
+    val nodeId: Long = idMap.get(mid)
+    if (nodeId >= 0) {
+      // if object is an mid (this is a relationship) and
+      // if predicate isn't ignored
+      val objMid = extractId(triple.objectString)
+      val objNodeId: Long = idMap.get(objMid)
+      if (objNodeId >= 0) {
+        // create relationship
+        batchInserter.createRelationship(nodeId, objNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
+        1
       }
     }
+
     0
   }
 
@@ -191,7 +186,13 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     val start = System.currentTimeMillis
     rdfIterable.foreach((triple) => {
 
-      relationshipCount = relationshipCount + createRelationshipFunction(triple)
+      if (triple.subjectString.startsWith(MID_PREFIX)) { // if subject is an mid
+        if (triple.objectString.startsWith(MID_PREFIX) &&
+          createRelationshipsPassFilter(triple)) {
+
+          relationshipCount = relationshipCount + createRelationshipFunction(triple)
+        }
+      }
 
       count = count + 1
 
@@ -217,39 +218,30 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
 
   def createProperty(triple: RdfTriple) = {
 
-    // if subject is an mid
-    if (triple.subjectString.startsWith(MID_PREFIX)) {
-      val mid = extractId(triple.subjectString)
-      val nodeId: Long = idMap.get(mid)
-      if (nodeId >= 0) {
-        // create property
-        if (triple.objectString.startsWith(MID_PREFIX)) {
-        } else {
-          // if object is an mid (this is a relationship)
-          if (createPropertiesPassFilter(triple)) {
-            val key = sanitize(triple.predicateString)
-            // if property exists, convert it to an array of properties
-            // if it's already an array, append to the array
-            if (batchInserter.nodeHasProperty(nodeId, key)) {
-              var prop = batchInserter.getNodeProperties(nodeId).get(key)
-              batchInserter.removeNodeProperty(nodeId, key)
-              prop match {
-                case prop: Array[String] => {
-                  batchInserter.setNodeProperty(nodeId, key, prop :+ triple.objectString)
-                }
-                case _ => {
-                  batchInserter.setNodeProperty(nodeId, key, Array[String](prop.toString) :+ triple.objectString)
-                }
-              }
-            } else {
-              batchInserter.setNodeProperty(nodeId, key, triple.objectString)
+    val mid = extractId(triple.subjectString)
+    val nodeId: Long = idMap.get(mid)
+    if (nodeId >= 0) {
+      // create property
+        val key = sanitize(triple.predicateString)
+        // if property exists, convert it to an array of properties
+        // if it's already an array, append to the array
+        if (batchInserter.nodeHasProperty(nodeId, key)) {
+          var prop = batchInserter.getNodeProperties(nodeId).get(key)
+          batchInserter.removeNodeProperty(nodeId, key)
+          prop match {
+            case prop: Array[String] => {
+              batchInserter.setNodeProperty(nodeId, key, prop :+ triple.objectString)
             }
-            1
+            case _ => {
+              batchInserter.setNodeProperty(nodeId, key, Array[String](prop.toString) :+ triple.objectString)
+            }
           }
+        } else {
+          batchInserter.setNodeProperty(nodeId, key, triple.objectString)
         }
-      } else {
-        // TODO handle labels?
-      }
+        1
+    } else {
+      // TODO handle labels?
     }
     0
   }
@@ -268,12 +260,22 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     val start = System.currentTimeMillis
     rdfIterable.foreach { triple => {
 
-      createProperty(triple)
+      if (triple.subjectString.startsWith(MID_PREFIX)) { // if subject is an mid
+
+        if (!triple.objectString.startsWith(MID_PREFIX)) { // if object is an mid (this is a relationship)
+
+          if (createPropertiesPassFilter(triple)) {
+
+            createProperty(triple)
+          }
+        }
+      }
 
       count = count + 1
       statusInfo.itemCountStatus(0).incCount
       statusConsole.displayProgress(statusInfo)
-    }}
+    }
+    }
 
     log.info("done create properties pass...")
     statusConsole.displayDone(statusInfo)
