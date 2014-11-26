@@ -84,7 +84,15 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////
   // Filters
+  // TODO: Create filters generically from settings data
   /////////////////////////////////////////////////////////////////////////////////////////////
+
+  // TODO: this is not really a filter, also is it inherent to the freebase structure? If so it's not settings data.
+  // TODO: Is this check even needed for a single pass approach?
+
+  val getIdsPassFilter: RdfTripleFilter = (triple: RdfTriple) => {
+    settings.nodeTypePredicates.contains(triple.predicateString)
+  }
 
   val createRelationshipsPassFilter: RdfTripleFilter = (triple: RdfTriple) => {
 
@@ -105,7 +113,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
   // Db Creators
   /////////////////////////////////////////////////////////////////////////////////////////////
 
-  def createNode(id : Int) = {
+  def createNode(id: Int) = {
     batchInserter.createNode(id, Map[String, java.lang.Object]("mid" -> mid2long.decode(idMap.midArray(id))).asJava, freebaseLabel)
   }
 
@@ -157,11 +165,9 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     0
   }
 
-
   /////////////////////////////////////////////////////////////////////////////////////////////
   // Main Creation
   /////////////////////////////////////////////////////////////////////////////////////////////
-
 
   def createDb = createDbOld
 
@@ -196,13 +202,22 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     shutdown
   }
 
-  val getIdsPassFilter: RdfTripleFilter = (triple: RdfTriple) => {
-    settings.nodeTypePredicates.contains(triple.predicateString)
-  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  // Passes
+  /////////////////////////////////////////////////////////////////////////////////////////////
 
   def singlePass() = {
 
-    val statusInfo = createStatusInfo(stage, "create relationships pass")
+    val statusInfo =
+    new StatusInfo(1, "Single pass",
+      Seq[ItemCountStatus](
+        new ItemCountStatus("lines", Seq[MovingAverage](
+          new MovingAverage("(10 second moving average)", (10 * 1000)),
+          new MovingAverage("(10 min moving average)", (10 * 60 * 1000)))
+        )
+      )
+    )
 
     log.info("starting create relationships pass...")
     stage += 1
@@ -214,17 +229,15 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
 
       if (triple.subjectString.startsWith(MID_PREFIX)) {
         // if subject is an mid
+
+        val mid = extractId(triple.subjectString)
+
         if (triple.objectString.startsWith(MID_PREFIX) &&
           createRelationshipsPassFilter(triple)) {
 
-          //relationshipCount = relationshipCount + createRelationshipFunction(triple)
-        }
-      }
+          relationshipCount = relationshipCount + createRelationship(triple)
 
-      if (triple.subjectString.startsWith(MID_PREFIX)) {
-        // if subject is an mid
-
-        if (!triple.objectString.startsWith(MID_PREFIX)) {
+        } else {
           // if object is an mid (this is a relationship)
 
           if (createPropertiesPassFilter(triple)) {
@@ -245,6 +258,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
   }
 
   def getIdsPass = {
+
     log.info("starting stage (collecting machine ids)...")
 
     val midToIdMapBuilder = MidToIdMapBuilder()
@@ -280,8 +294,8 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     log.info("starting creating the nodes...")
     stage += 1
     val start = System.currentTimeMillis()
-    (0 until idMap.length).foreach { i =>
-      createNode(i)
+    (0 until idMap.length).foreach { id =>
+      createNode(id)
       statusInfo.itemCountStatus(0).incCount
       statusConsole.displayProgress(statusInfo)
     }
@@ -289,9 +303,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     log.info("done creating the nodes...")
   }
 
-  def createRelationshipsPass() = createRelationships(createRelationship)
-
-  def createRelationships(createRelationshipFunction: (RdfTriple) => Int) = {
+  def createRelationshipsPass() = {
 
     val statusInfo = createStatusInfo(stage, "create relationships pass")
 
@@ -301,14 +313,14 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     var count = 0l
     var relationshipCount = 0l
     val start = System.currentTimeMillis
-    rdfIterable.foreach((triple) => {
+    rdfIterable.foreach { triple => {
 
       if (triple.subjectString.startsWith(MID_PREFIX)) {
         // if subject is an mid
         if (triple.objectString.startsWith(MID_PREFIX) &&
           createRelationshipsPassFilter(triple)) {
 
-          relationshipCount = relationshipCount + createRelationshipFunction(triple)
+          relationshipCount = relationshipCount + createRelationship(triple)
         }
       }
 
@@ -316,17 +328,15 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
 
       statusInfo.itemCountStatus(0).incCount
       statusConsole.displayProgress(statusInfo)
-    })
+    }
+    }
 
     log.info("done create relationships pass...")
 
     statusConsole.displayDone(statusInfo)
   }
 
-
-  def createPropertiesPass() = createProperties(createProperty)
-
-  def createProperties(createRelationshipFunction: (RdfTriple) => Int) = {
+  def createPropertiesPass() = {
 
     val statusInfo = createStatusInfo(stage, "create properties pass")
 
@@ -360,6 +370,10 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     log.info("done create properties pass...")
     statusConsole.displayDone(statusInfo)
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  // Utils
+  /////////////////////////////////////////////////////////////////////////////////////////////
 
   def sanitize(s: String) = {
     val s2 = s.replaceAllLiterally(settings.freebaseRdfPrefix, "")
