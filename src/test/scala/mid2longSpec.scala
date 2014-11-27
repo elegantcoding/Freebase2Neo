@@ -1,4 +1,4 @@
-import com.elegantcoding.freebase2neo.{mid2long}
+import com.elegantcoding.freebase2neo.{base32Converter}
 
 import org.scalatest._
 import scala.util.Random
@@ -9,8 +9,8 @@ class mid2longSpec extends FlatSpec with ShouldMatchers {
     for (x <- 0 to 1000) {
       val r = new Random(System.currentTimeMillis())
       val l = math.abs(r.nextLong() % (32^12-1))
-      val str = mid2long.decode(l)
-      l should be(mid2long.encode(str))
+      val str = base32Converter.toBase32(l)
+      l should be(base32Converter.toDecimal(str))
     }
   }
 }

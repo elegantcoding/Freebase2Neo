@@ -29,7 +29,7 @@
 
 package com.elegantcoding.freebase2neo
 
-object mid2long {
+object base32Converter {
  
   val mask = Integer.parseInt("11111", 2)
   val bits = 5
@@ -43,11 +43,11 @@ object mid2long {
   asciiToCodeLookup('_')=code
   codeToAsciiLookup(code)='_'
 
-  def vowel(c:Char) = 
+  private def vowel(c:Char) =
     (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u')
 
   // 10s for 100M encodes... probably not worth optimizing
-  def encode(mid:String):Long = {
+  def toDecimal(mid:String):Long = {
     var result = 0L
     val length = mid.length
     // throw exception if length greater than maxChars?
@@ -62,7 +62,7 @@ object mid2long {
     result
   }
  
-  def decode(l:Long):String = {
+  def toBase32(l:Long):String = {
     val result = Array.fill[Char](maxChars)(' ')
     var i=0
     var mid = l

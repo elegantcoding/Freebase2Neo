@@ -53,7 +53,7 @@ class MidToIdMapBuilder {
 
     def getMid(mid : String) : Int = {
 
-      get(mid2long.encode(mid))
+      get(base32Converter.toDecimal(mid))
     }
 
     def length = midArray.length
@@ -63,7 +63,7 @@ class MidToIdMapBuilder {
   var currentIndex : Int = 0
 
   def putMid(mid:String) = {
-    put(mid2long.encode(mid))
+    put(base32Converter.toDecimal(mid))
   }
 
   def put(mid:Long) = {

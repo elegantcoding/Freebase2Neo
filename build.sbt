@@ -19,7 +19,7 @@ name := "freebase2neo"
 
 version := "0.3.0"
 
-organization := "org.anormcypher"
+organization := "com.elegantcoding"
 
 scalaVersion := "2.11.1"
 

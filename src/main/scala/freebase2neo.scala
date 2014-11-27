@@ -29,7 +29,8 @@
 
 package com.elegantcoding.freebase2neo
 
-import java.util.concurrent.ConcurrentHashMap
+//import java.util.concurrent.ConcurrentHashMap
+
 import java.util.zip.GZIPInputStream
 import java.io.FileInputStream
 import com.elegantcoding.rdfprocessor.rdftriple.types.{RdfTripleFilter, RdfTupleFilter, RdfTriple}
@@ -43,11 +44,15 @@ import com.elegantcoding.rdfprocessor.NTripleIterable
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.slf4j.Logger
 
+import scala.collection.mutable
+
 class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
   var log = Logger(LoggerFactory.getLogger("freebase2neo"))
   var idMap: MidToIdMap = MidToIdMapBuilder().getMidToIdMap;
 
-  val idMap2 = new ConcurrentHashMap[Long, Int].asScala
+  //TODO: Tie these two together in Synchronized class
+  val idMap2 : mutable.Map[Long, Int] = new mutable.HashMap[Long, Int]()
+  var currentId = 1
 
   // create empty one for now
   var freebaseLabel = DynamicLabel.label("Freebase")
@@ -72,7 +77,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     )
 
   def extractId(str: String): Long = {
-    mid2long.encode(str.substring(MID_PREFIX.length, str.length() - 1))
+    base32Converter.toDecimal(str.substring(MID_PREFIX.length, str.length() - 1))
   }
 
   var batchInserter = inserter
@@ -94,12 +99,12 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
     settings.nodeTypePredicates.contains(triple.predicateString)
   }
 
-  val createRelationshipsPassFilter: RdfTripleFilter = (triple: RdfTriple) => {
+  val createRelationshipsFilter : RdfTripleFilter = (triple: RdfTriple) => {
 
     !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString)
   }
 
-  val createPropertiesPassFilter: RdfTripleFilter = (triple: RdfTriple) => {
+  val createPropertiesFilter : RdfTripleFilter = (triple: RdfTriple) => {
     !settings.filters.predicateFilter.blacklist.equalsSeq.contains(triple.predicateString) &&
       (settings.filters.predicateFilter.whitelist.equalsSeq.contains(triple.predicateString) ||
         !startsWithAny(triple.predicateString, settings.filters.predicateFilter.blacklist.startsWithSeq)) &&
@@ -113,11 +118,20 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
   // Db Creators
   /////////////////////////////////////////////////////////////////////////////////////////////
 
-  def createNode(id: Int) = {
-    batchInserter.createNode(id, Map[String, java.lang.Object]("mid" -> mid2long.decode(idMap.midArray(id))).asJava, freebaseLabel)
+  def createNode(id: Int) =
+    batchInserter.createNode(id, Map[String, java.lang.Object]("mid" -> base32Converter.toBase32(idMap.midArray(id))).asJava, freebaseLabel)
+
+
+  def createNode(mid: Long) : Int = {
+
+    val subjectNodeId = currentId + 1
+    idMap2.put(mid, subjectNodeId)
+    createNode(subjectNodeId)
+
+    subjectNodeId
   }
 
-  def createRelationship(triple: RdfTriple) = {
+    def createRelationship(triple: RdfTriple) = {
     val mid = extractId(triple.subjectString)
     val nodeId: Long = idMap.get(mid)
     if (nodeId >= 0) {
@@ -134,6 +148,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
 
     0
   }
+
 
   def createProperty(triple: RdfTriple) = {
 
@@ -210,14 +225,14 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
   def singlePass() = {
 
     val statusInfo =
-    new StatusInfo(1, "Single pass",
-      Seq[ItemCountStatus](
-        new ItemCountStatus("lines", Seq[MovingAverage](
-          new MovingAverage("(10 second moving average)", (10 * 1000)),
-          new MovingAverage("(10 min moving average)", (10 * 60 * 1000)))
+      new StatusInfo(1, "Single pass",
+        Seq[ItemCountStatus](
+          new ItemCountStatus("lines", Seq[MovingAverage](
+            new MovingAverage("(10 second moving average)", (10 * 1000)),
+            new MovingAverage("(10 min moving average)", (10 * 60 * 1000)))
+          )
         )
       )
-    )
 
     log.info("starting create relationships pass...")
     stage += 1
@@ -230,17 +245,24 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
       if (triple.subjectString.startsWith(MID_PREFIX)) {
         // if subject is an mid
 
-        val mid = extractId(triple.subjectString)
+        val subjectMid = extractId(triple.subjectString)
 
+        val subjectNodeId = idMap2.get(subjectMid).getOrElse(createNode(subjectMid))
+
+        // if object is an mid (this is a relationship)
         if (triple.objectString.startsWith(MID_PREFIX) &&
-          createRelationshipsPassFilter(triple)) {
+          createRelationshipsFilter(triple)) {
 
-          relationshipCount = relationshipCount + createRelationship(triple)
+          val objectMid = extractId(triple.objectString)
+          val objectNodeId = idMap2.get(objectMid).getOrElse(createNode(objectMid))
+
+          relationshipCount = relationshipCount + 1
+
+          batchInserter.createRelationship(subjectNodeId, objectNodeId, DynamicRelationshipType.withName(sanitize(triple.predicateString)), null)
 
         } else {
-          // if object is an mid (this is a relationship)
 
-          if (createPropertiesPassFilter(triple)) {
+          if (createPropertiesFilter(triple)) {
 
             createProperty(triple)
           }
@@ -318,7 +340,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
       if (triple.subjectString.startsWith(MID_PREFIX)) {
         // if subject is an mid
         if (triple.objectString.startsWith(MID_PREFIX) &&
-          createRelationshipsPassFilter(triple)) {
+          createRelationshipsFilter(triple)) {
 
           relationshipCount = relationshipCount + createRelationship(triple)
         }
@@ -354,7 +376,7 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
         if (!triple.objectString.startsWith(MID_PREFIX)) {
           // if object is an mid (this is a relationship)
 
-          if (createPropertiesPassFilter(triple)) {
+          if (createPropertiesFilter(triple)) {
 
             createProperty(triple)
           }
