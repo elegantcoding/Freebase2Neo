@@ -34,6 +34,7 @@ package com.elegantcoding.freebase2neo
 import java.util.zip.GZIPInputStream
 import java.io.FileInputStream
 import com.elegantcoding.rdfprocessor.rdftriple.types.{RdfTripleFilter, RdfTupleFilter, RdfTriple}
+import com.elegantcoding.statuscosole.{MovingAverage, ItemCountStatus, StatusInfo, StatusConsole}
 
 import collection.JavaConverters._
 

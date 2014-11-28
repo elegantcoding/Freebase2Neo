@@ -35,6 +35,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.2",
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
   "com.googlecode.lanterna" % "lanterna" % "2.1.8",
+  "com.elegantcoding" %% "status-console" % "0.1.0",
   "com.elegantcoding" %% "rdf-processor" % "0.6.1"
 )
 
