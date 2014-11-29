@@ -63,8 +63,10 @@ class Freebase2Neo(inserter: BatchInserter, settings: Settings) {
 
   var freebaseFile = settings.gzippedNTripleFile
 
-  //TODO: make this an Actor
-  val statusConsole = new StatusConsole();
+  val SCREEN_MESSAGE = "Freebase2Neo : press ctrl-C to quit"
+
+  //TODO: make this an Actor?
+  val statusConsole = new StatusConsole(SCREEN_MESSAGE);
 
   def createStatusInfo(stage: Int, stageDescription: String) =
     new StatusInfo(stage,

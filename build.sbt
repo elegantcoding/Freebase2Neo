@@ -34,7 +34,6 @@ libraryDependencies ++= Seq(
   "org.neo4j" % "neo4j" % "2.1.5",
   "ch.qos.logback" % "logback-classic" % "1.1.2",
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
-  "com.googlecode.lanterna" % "lanterna" % "2.1.8",
   "com.elegantcoding" %% "status-console" % "0.1.0",
   "com.elegantcoding" %% "rdf-processor" % "0.6.1"
 )
@@ -43,7 +42,7 @@ fork in Test := true
 
 javaOptions in Test += "-Xmx5g"
 
-seq(lsSettings :_*)
+//seq(lsSettings :_*)
 
 (LsKeys.tags in LsKeys.lsync) := Seq("rdf","neo4j", "neo")
 
